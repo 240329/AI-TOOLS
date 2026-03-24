@@ -130,6 +130,11 @@ This project has no test framework (no Jest, Vitest, etc.).
 - Create backups before major edits
 - Validate HTML after making changes
 
+### Backup File Management
+- Maximum 5 backup versions per file (e.g., `file.html.backup`, `file.html.backup2`, etc.)
+- When exceeding 5 versions, delete the oldest backup file automatically
+- Backup files should follow the pattern: `filename.backup`, `filename.backup2`, etc.
+
 ## Git Workflow
 - Commit message format: `<type>: <description>`
 - Types: `feat`, `fix`, `update`, `docs`, `style`
