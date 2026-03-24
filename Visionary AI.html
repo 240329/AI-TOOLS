@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VISIONARY AI - 全能视觉创意工作站</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-color: #00f2ff;
+            --accent-gradient: linear-gradient(135deg, #00f2ff, #7000ff);
+            --accent-glow: rgba(0, 242, 255, 0.3);
+            --text-main: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.5);
+            --panel-blur: blur(35px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', sans-serif; }
+        body { background: #010103; color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* --- 动态流体背景 --- */
+        .bg-animate { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #010103; overflow: hidden; }
+        .blob { position: absolute; width: 800px; height: 800px; border-radius: 50%; filter: blur(120px); opacity: 0.15; animation: rotate 30s infinite linear; }
+        .blob-1 { background: var(--accent-gradient); top: -200px; left: -200px; }
+        .blob-2 { background: linear-gradient(135deg, #ff00c8, #7000ff); bottom: -200px; right: -200px; animation-direction: reverse; }
+        @keyframes rotate { from { transform: rotate(0deg) scale(1); } to { transform: rotate(360deg) scale(1.2); } }
+
+        /* --- 顶部栏 --- */
+        header {
+            height: 65px; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: space-between; padding: 0 25px;
+        }
+        .brand { display: flex; align-items: center; gap: 15px; }
+        .logo { width: 35px; height: 35px; background: var(--accent-gradient); border-radius: 10px; display: grid; place-items: center; box-shadow: 0 0 20px var(--accent-glow); }
+        .app-title { font-size: 1.1rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* --- 主布局 --- */
+        .main-wrapper { display: grid; grid-template-columns: 85px 400px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 65px); }
+
+        /* --- 侧边导航 --- */
+        nav {
+            background: var(--glass-bg); backdrop-filter: var(--panel-blur); border: 1px solid var(--glass-border);
+            border-radius: 24px; display: flex; flex-direction: column; align-items: center; padding: 30px 0; gap: 20px;
+        }
+        .nav-btn {
+            width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+            color: var(--text-dim); cursor: pointer; transition: 0.3s; position: relative;
+        }
+        .nav-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .nav-btn.active { color: var(--accent-color); background: rgba(0,242,255,0.1); box-shadow: 0 0 15px rgba(0,242,255,0.1); }
+        .nav-btn.active::before { content: ''; position: absolute; left: -15px; width: 4px; height: 20px; background: var(--accent-color); border-radius: 0 4px 4px 0; box-shadow: 0 0 15px var(--accent-color); }
+        .nav-btn i { font-size: 1.3rem; }
+
+        /* --- 配置面板 --- */
+        .config-container {
+            background: var(--glass-bg); backdrop-filter: var(--panel-blur); border: 1px solid var(--glass-border);
+            border-radius: 28px; padding: 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 25px;
+        }
+        .mode-section { display: none; animation: slideIn 0.4s ease-out; }
+        .mode-section.active { display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+        h2 { font-size: 1.2rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .label { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 10px; display: block; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* 通用输入组件 */
+        .grid-select { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .option-card {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 12px;
+            border-radius: 12px; cursor: pointer; text-align: center; transition: 0.2s; font-size: 0.85rem;
+        }
+        .option-card:hover { border-color: rgba(255,255,255,0.3); }
+        .option-card.active { border-color: var(--accent-color); background: rgba(0,242,255,0.15); color: var(--accent-color); }
+
+        textarea, select {
+            width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px;
+            padding: 15px; color: #fff; outline: none; transition: 0.3s; font-size: 0.9rem;
+        }
+        textarea:focus { border-color: var(--accent-color); }
+
+        .upload-zone {
+            border: 2px dashed var(--glass-border); border-radius: 18px; padding: 30px; text-align: center;
+            cursor: pointer; transition: 0.3s;
+        }
+        .upload-zone:hover { border-color: var(--accent-color); background: rgba(0,242,255,0.05); }
+
+        .slider-group { margin: 15px 0; }
+        input[type="range"] { width: 100%; accent-color: var(--accent-color); margin-top: 10px; }
+
+        .action-btn {
+            background: var(--accent-gradient); color: #fff; border: none; padding: 18px; border-radius: 15px;
+            font-weight: 700; cursor: pointer; transition: 0.3s; margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .action-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 30px var(--accent-glow); }
+
+        /* --- 预览工作区 --- */
+        .workspace {
+            background: var(--glass-bg); backdrop-filter: blur(15px); border: 1px solid var(--glass-border);
+            border-radius: 28px; position: relative; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .ws-header { padding: 20px 30px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
+        .canvas { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 40px; }
+        
+        /* 生成中的动画 */
+        .loading-overlay { display: none; flex-direction: column; align-items: center; gap: 20px; }
+        .spinner { width: 60px; height: 60px; border: 4px solid var(--glass-border); border-top-color: var(--accent-color); border-radius: 50%; animation: spin 1s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- 媒体库网格 --- */
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; padding: 10px; }
+        .gallery-item { border-radius: 12px; overflow: hidden; aspect-ratio: 9/16; background: #111; border: 1px solid var(--glass-border); position: relative; cursor: pointer; }
+        .gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+        .gallery-item:hover .item-overlay { opacity: 1; }
+        .item-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; gap: 10px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-animate">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <header>
+        <div class="brand">
+            <div class="logo"><i class="fas fa-microchip" style="color:#000"></i></div>
+            <div class="app-title">Visionary AI Pro</div>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <div style="font-size:0.8rem; color:var(--text-dim);"><i class="fas fa-bolt" style="color:var(--accent-color)"></i> GPU 加速已开启</div>
+            <img src="https://i.pravatar.cc/100" style="width:35px; height:35px; border-radius:50%; border:2px solid var(--accent-color);">
+        </div>
+    </header>
+
+    <div class="main-wrapper">
+        <!-- 侧边导航 -->
+        <nav id="mainNav">
+            <div class="nav-btn active" data-target="text-mode" title="文生视觉"><i class="fas fa-paragraph"></i></div>
+            <div class="nav-btn" data-target="image-mode" title="图生视频"><i class="fas fa-image"></i></div>
+            <div class="nav-btn" data-target="optimize-mode" title="海报优化"><i class="fas fa-magic"></i></div>
+            <div class="nav-btn" data-target="gallery-mode" title="媒体库"><i class="fas fa-th-large"></i></div>
+            <div class="nav-btn" style="margin-top:auto;" data-target="settings-mode"><i class="fas fa-sliders-h"></i></div>
+        </nav>
+
+        <!-- 动态配置面板 -->
+        <aside class="config-container">
+            
+            <!-- 模式1: 文生海报/视频 -->
+            <div class="mode-section active" id="text-mode">
+                <h2><i class="fas fa-keyboard"></i> 文本创作</h2>
+                <span class="label">选择 AI 模型</span>
+                <div class="grid-select">
+                    <div class="option-card active">Seedance</div>
+                    <div class="option-card">Midjourney</div>
+                    <div class="option-card">Kling (可灵)</div>
+                    <div class="option-card">Sora</div>
+                    <div class="option-card">Veo</div>
+                    <div class="option-card">海螺 (Nano)</div>
+                </div>
+                <span class="label">创意提示词</span>
+                <textarea rows="6" placeholder="例如：一张高端智能手表的商业海报，极简主义，拉丝金属质感，光影交错..."></textarea>
+                <span class="label">输出内容类型</span>
+                <div class="grid-select">
+                    <div class="option-card active"><i class="fas fa-file-image"></i> 静态海报</div>
+                    <div class="option-card"><i class="fas fa-video"></i> 宣传短片</div>
+                </div>
+                <button class="action-btn generate-trigger"><i class="fas fa-wand-sparkles"></i> 立即生成内容</button>
+            </div>
+
+            <!-- 模式2: 图生视频 -->
+            <div class="mode-section" id="image-mode">
+                <h2><i class="fas fa-film"></i> 静态转动态</h2>
+                <span class="label">上传源文件 (产品图/海报)</span>
+                <div class="upload-zone">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: var(--accent-color)"></i>
+                    <p style="margin-top:10px; font-size:0.8rem;">拖拽图片到此处或点击上传</p>
+                </div>
+                <div class="slider-group">
+                    <span class="label">动态强度: <span id="val-motion">50</span></span>
+                    <input type="range" min="1" max="100" value="50" oninput="document.getElementById('val-motion').innerText = this.value">
+                </div>
+                <div class="slider-group">
+                    <span class="label">视频时长: <span id="val-duration">5</span>s</span>
+                    <input type="range" min="3" max="15" value="5" oninput="document.getElementById('val-duration').innerText = this.value">
+                </div>
+                <span class="label">动作描述 (选填)</span>
+                <textarea rows="3" placeholder="描述你希望图片如何动起来，例如：镜头缓慢推近，背景烟雾流动..."></textarea>
+                <button class="action-btn generate-trigger"><i class="fas fa-play"></i> 开始渲染视频</button>
+            </div>
+
+            <!-- 模式3: 海报优化 -->
+            <div class="mode-section" id="optimize-mode">
+                <h2><i class="fas fa-sync-alt"></i> 智能优化</h2>
+                <span class="label">原始海报</span>
+                <div class="upload-zone" style="padding: 15px;">
+                    <p style="font-size:0.7rem;">上传需要修复或增强的海报</p>
+                </div>
+                <span class="label">优化选项</span>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div class="option-card" style="text-align:left;"><i class="fas fa-expand"></i> 4K 超清重绘</div>
+                    <div class="option-card" style="text-align:left;"><i class="fas fa-sun"></i> 智能补光与重照明</div>
+                    <div class="option-card" style="text-align:left;"><i class="fas fa-font"></i> 字体美化与排版</div>
+                    <div class="option-card" style="text-align:left;"><i class="fas fa-brush"></i> 移除多余元素</div>
+                </div>
+                <button class="action-btn generate-trigger" style="background: linear-gradient(135deg, #00c6ff, #0072ff);"><i class="fas fa-magic"></i> 开启自动优化</button>
+            </div>
+
+            <!-- 模式4: 媒体库 -->
+            <div class="mode-section" id="gallery-mode">
+                <h2><i class="fas fa-history"></i> 我的作品</h2>
+                <div class="gallery-grid">
+                    <!-- 模拟数据 -->
+                    <div class="gallery-item"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200"></div>
+                    <div class="gallery-item"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200"></div>
+                    <div class="gallery-item"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200"></div>
+                    <div class="gallery-item"><img src="https://images.unsplash.com/photo-1526170315876-3d8c11ce3d73?w=200"></div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- 预览工作区 -->
+        <main class="workspace">
+            <div class="ws-header">
+                <div><span style="color:var(--accent-color)">●</span> 当前状态: <span id="statusText">等待指令</span></div>
+                <div style="display:flex; gap:20px;">
+                    <i class="fas fa-columns" title="分屏对比" style="cursor:pointer"></i>
+                    <i class="fas fa-download" title="下载成品" style="cursor:pointer"></i>
+                    <i class="fas fa-share-alt" title="分享" style="cursor:pointer"></i>
+                </div>
+            </div>
+            
+            <div class="canvas" id="canvasView">
+                <div class="placeholder" id="initView">
+                    <div style="font-size: 5rem; opacity: 0.1; margin-bottom: 20px;"><i class="fas fa-photo-video"></i></div>
+                    <p style="color:var(--text-dim)">在左侧配置参数并点击生成按钮</p>
+                </div>
+
+                <div class="loading-overlay" id="loadingView">
+                    <div class="spinner"></div>
+                    <p id="loadingText">神经元正在构思中...</p>
+                </div>
+            </div>
+
+            <!-- 底部参数快照 -->
+            <div style="padding:15px 30px; background:rgba(0,0,0,0.3); border-top:1px solid var(--glass-border); display:flex; gap:30px; font-size:0.75rem; color:var(--text-dim);">
+                <span>分辨率: 2560x1440</span>
+                <span>比例: 9:16</span>
+                <span>色彩空间: P3 Display</span>
+                <span>渲染引擎: CUDA 12.4</span>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 1. 模式切换逻辑
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const sections = document.querySelectorAll('.mode-section');
+        const statusText = document.getElementById('statusText');
+
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // UI 状态
+                navBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // 面板切换
+                const target = btn.getAttribute('data-target');
+                sections.forEach(s => s.classList.remove('active'));
+                document.getElementById(target).classList.add('active');
+                
+                statusText.innerText = `模式: ${btn.title || '设置'}`;
+            });
+        });
+
+        // 2. 选项卡片选择
+        document.querySelectorAll('.option-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const siblings = this.parentElement.querySelectorAll('.option-card');
+                siblings.forEach(s => s.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // 3. 模拟生成逻辑
+        const generateTriggers = document.querySelectorAll('.generate-trigger');
+        const initView = document.getElementById('initView');
+        const loadingView = document.getElementById('loadingView');
+        const canvasView = document.getElementById('canvasView');
+
+        generateTriggers.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // 进入加载状态
+                initView.style.display = 'none';
+                loadingView.style.display = 'flex';
+                statusText.innerText = "正在生成中...";
+                
+                // 模拟不同阶段的文字变化
+                const texts = ["正在初始化模型...", "解析提示词语义...", "构建视觉张量...", "优化光影细节...", "完成最后渲染..."];
+                let i = 0;
+                const interval = setInterval(() => {
+                    document.getElementById('loadingText').innerText = texts[i++];
+                    if(i >= texts.length) {
+                        clearInterval(interval);
+                        showResult();
+                    }
+                }, 800);
+            });
+        });
+
+        function showResult() {
+            loadingView.style.display = 'none';
+            statusText.innerText = "生成已完成";
+            
+            // 插入模拟的生成图像
+            canvasView.innerHTML = `
+                <div style="position:relative; width:340px; height:600px; animation: fadeIn 1s forwards;">
+                    <img src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                         style="width:100%; height:100%; object-fit:cover; border-radius:20px; box-shadow: 0 0 50px rgba(0,0,0,0.8), 0 0 20px var(--accent-glow);">
+                    <div style="position:absolute; bottom:40px; left:20px; right:20px;">
+                        <div style="font-weight:900; font-size:2.5rem; line-height:1; text-shadow: 0 5px 15px rgba(0,0,0,1);">FUTURE<br>VISION</div>
+                        <div style="height:2px; width:50px; background:var(--accent-color); margin:15px 0;"></div>
+                        <div style="font-size:0.8rem; letter-spacing:2px; opacity:0.8;">PREMIUM EDITION 2024</div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+
+    <style>
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</body>
+</html>

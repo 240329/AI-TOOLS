@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V-GEN Ultra | 专业 AI 视频创作套件</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --neon-cyan: #00f2ff;
+            --neon-purple: #bc13fe;
+            --glass-bg: rgba(6, 12, 24, 0.75);
+        }
+
+        body {
+            background: #010208;
+            font-family: 'Inter', "Microsoft YaHei", sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            color: #e0e0e0;
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(50px) saturate(200%);
+            -webkit-backdrop-filter: blur(50px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 100px rgba(0, 0, 0, 0.9);
+        }
+
+        #meteor-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .neon-text {
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 15px var(--neon-cyan);
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0, 242, 255, 0.1); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(0, 242, 255, 0.3); }
+
+        .btn-action {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-action:hover {
+            background: rgba(0, 242, 255, 0.1);
+            border-color: var(--neon-cyan);
+            transform: translateY(-2px);
+        }
+        
+        .selected-glow {
+            border-color: var(--neon-cyan) !important;
+            background: rgba(0, 242, 255, 0.1) !important;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+        }
+
+        /* 简单的吐司提示动画 */
+        #toast {
+            transition: all 0.5s ease;
+            transform: translateY(100px);
+            opacity: 0;
+        }
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <canvas id="meteor-canvas"></canvas>
+
+    <!-- 隐藏的文件输入框 -->
+    <input type="file" id="file-upload" class="hidden" multiple onchange="handleFileUpload(this.files)">
+
+    <div class="w-full h-full max-w-[1550px] max-h-[920px] glass rounded-[50px] flex flex-col overflow-hidden relative z-10 border border-white/10">
+        
+        <!-- 1. 顶部状态栏 -->
+        <header class="h-24 border-b border-white/5 flex items-center justify-between px-12 shrink-0">
+            <div class="flex items-center gap-6">
+                <div class="relative group">
+                    <div class="absolute inset-0 bg-cyan-400 blur-2xl opacity-20 animate-pulse"></div>
+                    <div class="relative w-14 h-14 bg-black rounded-2xl flex items-center justify-center border border-white/10">
+                        <i class="fas fa-microchip text-cyan-400 text-2xl rotate-45"></i>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-[0.2em] neon-text uppercase">V-GEN <span class="text-white">Studio</span></h1>
+                    <div class="flex items-center gap-4 mt-1">
+                        <span id="project-name" class="text-[10px] text-gray-500 font-bold tracking-widest uppercase italic">项目：新建视频_01</span>
+                        <div class="h-1 w-1 bg-gray-700 rounded-full"></div>
+                        <span id="system-status" class="text-[10px] text-cyan-500 font-mono tracking-widest">系统就绪</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-6">
+                <div class="flex -space-x-3">
+                    <img src="https://i.pravatar.cc/150?u=1" class="w-10 h-10 rounded-full border-2 border-[#010208]">
+                    <img src="https://i.pravatar.cc/150?u=2" class="w-10 h-10 rounded-full border-2 border-[#010208]">
+                    <div class="w-10 h-10 rounded-full bg-gray-800 border-2 border-[#010208] flex items-center justify-center text-[10px] text-gray-400 font-bold">+4</div>
+                </div>
+                <div class="h-10 w-[1px] bg-white/10 mx-2"></div>
+                <button onclick="showToast('设置面板已开启')" class="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 transition flex items-center justify-center text-gray-400">
+                    <i class="fas fa-gear"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden">
+            
+            <!-- 2. 左侧导航 -->
+            <nav class="w-20 border-r border-white/5 flex flex-col items-center py-8 gap-8 shrink-0">
+                <button onclick="resetToHome()" class="text-cyan-400 text-xl hover:scale-110 transition"><i class="fas fa-house"></i></button>
+                <button class="text-gray-500 hover:text-white transition text-xl"><i class="fas fa-folder-open"></i></button>
+                <button class="text-gray-500 hover:text-white transition text-xl"><i class="fas fa-wand-magic-sparkles"></i></button>
+                <button class="text-gray-500 hover:text-white transition text-xl"><i class="fas fa-chart-pie"></i></button>
+                <button class="mt-auto text-gray-500 hover:text-white transition text-xl"><i class="fas fa-circle-question"></i></button>
+            </nav>
+
+            <!-- 3. 素材列表 -->
+            <aside class="w-72 border-r border-white/5 flex flex-col p-6 shrink-0 bg-black/20">
+                <div class="mb-8">
+                    <div class="relative">
+                        <input type="text" id="asset-search" placeholder="搜索素材..." oninput="filterAssets()" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-cyan-400/50 transition">
+                        <i class="fas fa-search absolute right-4 top-2.5 text-gray-600 text-[10px]"></i>
+                    </div>
+                </div>
+
+                <div id="file-list" class="flex-1 overflow-y-auto custom-scroll space-y-6">
+                    <div>
+                        <h3 class="text-[10px] font-black text-gray-600 tracking-[0.3em] uppercase mb-4">核心文档</h3>
+                        <div id="document-stack" class="space-y-3">
+                            <!-- 初始素材 -->
+                            <div onclick="selectFile(this)" class="file-item p-4 rounded-2xl btn-action cursor-pointer group">
+                                <div class="flex items-center gap-3">
+                                    <i class="far fa-file-pdf text-red-500 text-lg"></i>
+                                    <div class="flex-1 truncate">
+                                        <p class="file-name text-xs font-bold truncate">产品战略规划.pdf</p>
+                                        <p class="text-[9px] text-gray-500 mt-0.5">2.4 MB • 已解析</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button onclick="document.getElementById('file-upload').click()" class="mt-6 w-full py-4 rounded-2xl border-2 border-dashed border-white/10 text-gray-500 hover:border-cyan-500 hover:text-cyan-400 transition-all font-bold text-[10px] uppercase tracking-widest">
+                    <i class="fas fa-plus-circle mr-2"></i> 导入新素材源
+                </button>
+            </aside>
+
+            <!-- 4. 中央工作台 -->
+            <main class="flex-1 relative flex flex-col min-w-0">
+                
+                <div class="flex-1 relative flex items-center justify-center">
+                    <div id="engine-vortex" class="relative w-[500px] h-[500px] flex items-center justify-center">
+                        <canvas id="engine-canvas" class="absolute inset-0"></canvas>
+                        
+                        <!-- 待机 -->
+                        <div id="idle-ui" class="text-center z-10 transition-all duration-500">
+                            <div class="w-36 h-36 mx-auto mb-10 rounded-full border border-cyan-500/10 flex items-center justify-center bg-cyan-500/5 backdrop-blur-md relative group cursor-pointer" onclick="document.getElementById('file-upload').click()">
+                                <div class="absolute inset-0 rounded-full group-hover:bg-cyan-500/10 animate-pulse transition"></div>
+                                <i class="fas fa-fingerprint text-5xl text-cyan-400/40 group-hover:text-cyan-400 transition duration-700"></i>
+                            </div>
+                            <h2 class="text-2xl font-light tracking-[0.6em] text-white/30 uppercase italic">等待素材输入</h2>
+                        </div>
+
+                        <!-- 生成中 -->
+                        <div id="processing-ui" class="hidden text-center z-10 w-full px-16">
+                            <h2 id="percent-display" class="text-8xl font-black neon-text mb-6 italic">00</h2>
+                            <p id="status-display" class="text-xs text-cyan-400 tracking-[0.4em] uppercase font-bold mono">核心引擎启动中...</p>
+                            <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-10">
+                                <div id="progress-bar" class="h-full bg-gradient-to-r from-cyan-500 to-purple-600 shadow-[0_0_20px_#00f2ff] transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 结果预览 -->
+                        <div id="result-ui" class="hidden w-[600px] h-[350px] absolute z-20 flex flex-col group">
+                            <div class="flex-1 glass rounded-[40px] border border-cyan-400/20 overflow-hidden relative shadow-2xl transition-all duration-700 hover:border-cyan-400/50">
+                                <div id="video-placeholder" class="absolute inset-0 bg-gradient-to-br from-cyan-900/20 to-purple-900/20 opacity-50"></div>
+                                <!-- 模拟播放进度条 -->
+                                <div id="video-playback-bar" class="absolute bottom-0 left-0 h-1 bg-cyan-400 shadow-[0_0_10px_#00f2ff] transition-all duration-100" style="width: 0%"></div>
+                                
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <button id="play-btn" onclick="togglePlay()" class="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center scale-90 group-hover:scale-110 transition duration-500">
+                                        <i class="fas fa-play text-2xl ml-1"></i>
+                                    </button>
+                                </div>
+                                <div class="absolute bottom-8 left-10 right-10 flex justify-between items-end">
+                                    <div>
+                                        <p class="text-xs font-bold text-cyan-400 mb-1">最终渲染主文件.MP4</p>
+                                        <p class="text-[9px] text-gray-500 mono">4K 超清 • 60FPS • H.265</p>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="showToast('生成分享链接成功')" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[10px] hover:bg-white/20 transition"><i class="fas fa-share-nodes"></i></button>
+                                        <button onclick="simulateDownload()" class="w-8 h-8 rounded-lg bg-cyan-500 text-black flex items-center justify-center text-[10px] hover:bg-cyan-400 transition"><i class="fas fa-download"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部场景预览 -->
+                <div class="h-48 px-10 pb-10 flex gap-6 shrink-0 overflow-x-auto custom-scroll">
+                    <div class="min-w-[300px] glass rounded-3xl p-5 border border-white/5 relative group cursor-pointer hover:border-cyan-500/20 transition">
+                        <span class="text-[9px] font-black text-cyan-500/50 tracking-widest uppercase mb-3 block">场景 01 / 开场悬念</span>
+                        <p class="text-[11px] text-gray-400 leading-relaxed italic">“在一个人工智能重塑现实的世界里，我们呈现信息的方式正在发生改变……”</p>
+                    </div>
+                    <div class="min-w-[300px] glass rounded-3xl p-5 border border-white/5 relative group opacity-40">
+                        <span class="text-[9px] font-black text-gray-500 tracking-widest uppercase mb-3 block">场景 02 / 核心价值</span>
+                        <p class="text-[11px] text-gray-400 leading-relaxed italic">“合成引擎能够处理原始数据，并在几秒钟内将其转化为高保真视觉叙事……”</p>
+                    </div>
+                </div>
+            </main>
+
+            <!-- 5. 右侧控制塔 -->
+            <aside class="w-96 border-l border-white/5 p-10 flex flex-col gap-8 shrink-0 bg-black/10">
+                
+                <div class="space-y-4">
+                    <h3 class="text-[10px] font-black text-gray-500 tracking-[0.3em] uppercase">视觉风格</h3>
+                    <div class="grid grid-cols-2 gap-2" id="style-grid">
+                        <button onclick="selectOption(this, 'style')" class="option-btn p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center gap-2 transition">
+                            <i class="fas fa-cube text-cyan-500/60"></i>
+                            <span class="text-[10px] font-bold">3D 等轴测</span>
+                        </button>
+                        <button onclick="selectOption(this, 'style')" class="option-btn p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500 text-cyan-400 flex flex-col items-center gap-2 transition selected-glow">
+                            <i class="fas fa-camera-retro"></i>
+                            <span class="text-[10px] font-bold">电影级写实</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-5">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-[10px] font-black text-gray-500 tracking-[0.3em] uppercase">语音核心</h3>
+                        <span id="voice-id" class="text-[9px] text-cyan-500 mono font-bold">AI_NEURAL_V4</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-black/40 rounded-2xl border border-white/5">
+                        <button onclick="toggleTab(this, '男声 - ARC')" class="vocal-tab flex-1 py-3 rounded-xl bg-cyan-500 text-black text-[10px] font-black tracking-widest shadow-xl transition">男声 - ARC</button>
+                        <button onclick="toggleTab(this, '女声 - LUX')" class="vocal-tab flex-1 py-3 rounded-xl text-gray-500 text-[10px] font-black tracking-widest transition hover:text-white">女声 - LUX</button>
+                    </div>
+                </div>
+
+                <div class="space-y-5">
+                    <h3 class="text-[10px] font-black text-gray-500 tracking-[0.3em] uppercase">输出矩阵</h3>
+                    <div class="space-y-2">
+                        <div class="flex gap-2">
+                            <button onclick="selectOption(this, 'ratio')" class="ratio-btn flex-1 py-3 bg-white/5 border border-cyan-500 text-cyan-400 rounded-xl text-[10px] font-bold selected-glow">16:9 横屏</button>
+                            <button onclick="selectOption(this, 'ratio')" class="ratio-btn flex-1 py-3 bg-white/5 border border-white/10 text-gray-500 rounded-xl text-[10px] font-bold">9:16 竖屏</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-8 border-t border-white/5">
+                    <button id="main-btn" onclick="startGeneration()" class="w-full py-6 rounded-[30px] border border-cyan-500/30 text-cyan-500 font-['Orbitron'] font-bold text-xs tracking-[0.4em] opacity-30 cursor-not-allowed transition-all duration-700">
+                        准备合成
+                    </button>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- 吐司提示 -->
+    <div id="toast" class="fixed bottom-10 bg-cyan-500 text-black px-8 py-3 rounded-full font-bold text-sm shadow-[0_0_20px_rgba(0,242,255,0.4)] z-[100]">
+        提示内容
+    </div>
+
+    <script>
+        // --- 1. 初始化变量 ---
+        let engineState = 'IDLE';
+        let selectedFileCount = 0;
+        let isPlaying = false;
+        let playInterval;
+
+        // --- 2. 素材管理功能 ---
+        function handleFileUpload(files) {
+            const container = document.getElementById('document-stack');
+            Array.from(files).forEach(file => {
+                const div = document.createElement('div');
+                div.className = "file-item p-4 rounded-2xl btn-action cursor-pointer group opacity-100 animate-pulse";
+                div.onclick = function() { selectFile(this); };
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <i class="far fa-file-code text-cyan-500 text-lg"></i>
+                        <div class="flex-1 truncate">
+                            <p class="file-name text-xs font-bold truncate">${file.name}</p>
+                            <p class="text-[9px] text-gray-500 mt-0.5">${(file.size/1024/1024).toFixed(1)} MB • 新导入</p>
+                        </div>
+                    </div>
+                `;
+                container.prepend(div);
+                setTimeout(() => div.classList.remove('animate-pulse'), 1000);
+            });
+            showToast(`成功导入 ${files.length} 个文件`);
+        }
+
+        function filterAssets() {
+            const query = document.getElementById('asset-search').value.toLowerCase();
+            document.querySelectorAll('.file-item').forEach(item => {
+                const name = item.querySelector('.file-name').innerText.toLowerCase();
+                item.style.display = name.includes(query) ? 'block' : 'none';
+            });
+        }
+
+        function selectFile(el) {
+            if(engineState !== 'IDLE') return;
+            document.querySelectorAll('.file-item').forEach(item => item.classList.remove('selected-glow'));
+            el.classList.add('selected-glow');
+            el.classList.remove('opacity-60');
+            
+            // 激活生成按钮
+            const btn = document.getElementById('main-btn');
+            btn.classList.remove('opacity-30', 'cursor-not-allowed');
+            btn.classList.add('bg-cyan-400/5', 'hover:bg-cyan-400', 'hover:text-black');
+            btn.innerText = "开始执行合成";
+            
+            document.getElementById('system-status').innerText = "素材已锁定";
+        }
+
+        // --- 3. 配置项交互 ---
+        function selectOption(btn, type) {
+            const selector = type === 'style' ? '.option-btn' : '.ratio-btn';
+            document.querySelectorAll(selector).forEach(b => {
+                b.classList.remove('selected-glow', 'bg-cyan-500/10', 'text-cyan-400');
+                b.classList.add('bg-white/5', 'text-gray-500');
+            });
+            btn.classList.add('selected-glow', 'bg-cyan-500/10', 'text-cyan-400');
+            btn.classList.remove('text-gray-500');
+        }
+
+        function toggleTab(btn, name) {
+            const btns = btn.parentElement.querySelectorAll('button');
+            btns.forEach(b => {
+                b.className = "vocal-tab flex-1 py-3 rounded-xl text-gray-500 text-[10px] font-black tracking-widest transition hover:text-white";
+            });
+            btn.className = "vocal-tab flex-1 py-3 rounded-xl bg-cyan-500 text-black text-[10px] font-black tracking-widest shadow-xl transition";
+            document.getElementById('voice-id').innerText = name.includes('ARC') ? 'AI_NEURAL_V4' : 'AI_LUX_PRO_V2';
+        }
+
+        // --- 4. 合成引擎逻辑 ---
+        function startGeneration() {
+            if(engineState !== 'IDLE' || document.getElementById('main-btn').classList.contains('cursor-not-allowed')) return;
+            
+            engineState = 'PROCESSING';
+            document.getElementById('idle-ui').classList.add('hidden');
+            document.getElementById('processing-ui').classList.remove('hidden');
+            
+            let progress = 0;
+            const steps = ["解析语义架构...", "优化视觉权重...", "合成神经元音频...", "量子渲染输出...", "封装多媒体矩阵..."];
+            
+            const interval = setInterval(() => {
+                progress += Math.random() * 1.5;
+                if(progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    setTimeout(showResult, 500);
+                }
+                document.getElementById('progress-bar').style.width = progress + '%';
+                document.getElementById('percent-display').innerText = Math.floor(progress).toString().padStart(2, '0');
+                document.getElementById('status-display').innerText = steps[Math.floor((progress/101)*steps.length)];
+            }, 50);
+        }
+
+        function showResult() {
+            engineState = 'RESULT';
+            document.getElementById('processing-ui').classList.add('hidden');
+            document.getElementById('result-ui').classList.remove('hidden');
+            document.getElementById('main-btn').innerText = "新建合成项目";
+            document.getElementById('main-btn').classList.add('text-white', 'border-white/20');
+            document.getElementById('system-status').innerText = "渲染完成";
+            showToast("视频合成成功！");
+        }
+
+        // --- 5. 播放器模拟 ---
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('play-btn');
+            const bar = document.getElementById('video-playback-bar');
+            
+            if(isPlaying) {
+                btn.innerHTML = '<i class="fas fa-pause text-2xl"></i>';
+                let p = 0;
+                playInterval = setInterval(() => {
+                    p += 0.5;
+                    if(p >= 100) {
+                        p = 0;
+                        togglePlay(); // 播放结束
+                    }
+                    bar.style.width = p + '%';
+                }, 50);
+            } else {
+                btn.innerHTML = '<i class="fas fa-play text-2xl ml-1"></i>';
+                clearInterval(playInterval);
+            }
+        }
+
+        function simulateDownload() {
+            const btn = document.querySelector('.fa-download').parentElement;
+            btn.innerHTML = '<i class="fas fa-spinner animate-spin"></i>';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                showToast("文件已保存至下载目录");
+                setTimeout(() => btn.innerHTML = '<i class="fas fa-download"></i>', 2000);
+            }, 1500);
+        }
+
+        // --- 6. 基础系统功能 ---
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function resetToHome() {
+            if(!confirm("确定要重置当前工作空间吗？")) return;
+            location.reload();
+        }
+
+        // --- 背景粒子与流星代码 (保持不变) ---
+        const mCanvas = document.getElementById('meteor-canvas');
+        const mCtx = mCanvas.getContext('2d');
+        const eCanvas = document.getElementById('engine-canvas');
+        const eCtx = eCanvas.getContext('2d');
+        let meteors = [], eParticles = [];
+
+        class Meteor {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * mCanvas.width;
+                this.y = Math.random() * mCanvas.height - 800;
+                this.len = Math.random() * 200 + 100;
+                this.speed = Math.random() * 20 + 15;
+                this.width = Math.random() * 2 + 0.5;
+                this.opacity = Math.random() * 0.4 + 0.1;
+                this.color = Math.random() > 0.4 ? '#00f2ff' : '#bc13fe';
+            }
+            draw() {
+                mCtx.save();
+                mCtx.globalAlpha = this.opacity;
+                const grad = mCtx.createLinearGradient(this.x, this.y, this.x - 20, this.y + this.len);
+                grad.addColorStop(0, 'white');
+                grad.addColorStop(1, 'transparent');
+                mCtx.strokeStyle = grad;
+                mCtx.lineWidth = this.width;
+                mCtx.beginPath();
+                mCtx.moveTo(this.x, this.y);
+                mCtx.lineTo(this.x - 20, this.y + this.len);
+                mCtx.stroke();
+                mCtx.restore();
+            }
+            update() {
+                this.y += this.speed;
+                this.x -= 2;
+                if (this.y > mCanvas.height + 200) this.reset();
+            }
+        }
+
+        class EngineParticle {
+            constructor() {
+                this.angle = Math.random() * Math.PI * 2;
+                this.radius = Math.random() * 180 + 50;
+                this.speed = Math.random() * 0.02 + 0.005;
+                this.size = Math.random() * 2;
+            }
+            draw() {
+                let speedMult = (engineState === 'PROCESSING') ? 10 : 1;
+                this.angle += this.speed * speedMult;
+                const x = 250 + Math.cos(this.angle) * this.radius;
+                const y = 250 + Math.sin(this.angle) * this.radius;
+                eCtx.fillStyle = '#00f2ff';
+                eCtx.globalAlpha = (engineState === 'PROCESSING') ? 0.8 : 0.2;
+                eCtx.beginPath();
+                eCtx.arc(x, y, this.size, 0, Math.PI * 2);
+                eCtx.fill();
+            }
+        }
+
+        function init() {
+            window.addEventListener('resize', () => {
+                mCanvas.width = window.innerWidth;
+                mCanvas.height = window.innerHeight;
+            });
+            mCanvas.width = window.innerWidth;
+            mCanvas.height = window.innerHeight;
+            eCanvas.width = 500; eCanvas.height = 500;
+            
+            for(let i=0; i<100; i++) meteors.push(new Meteor());
+            for(let i=0; i<300; i++) eParticles.push(new EngineParticle());
+            animate();
+        }
+
+        function animate() {
+            mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+            eCtx.clearRect(0, 0, 500, 500);
+            meteors.forEach(m => { m.update(); m.draw(); });
+            eParticles.forEach(p => p.draw());
+            requestAnimationFrame(animate);
+        }
+
+        init();
+    </script>
+</body>
+</html>
