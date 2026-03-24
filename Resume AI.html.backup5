@@ -675,11 +675,6 @@
             background: rgba(0,0,0,0.15);
             cursor: pointer;
             transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 180px;
         }
         .add-category:hover {
             border-color: var(--accent-blue);
@@ -930,7 +925,7 @@
 
                 <!-- ================= 4. 人才库管理 ================= -->
                 <div id="view-categories" class="view-section">
-                    <div class="category-grid" id="category-grid">
+                    <div class="category-grid">
                         <div class="glass-card folder-card">
                             <i class="fa-solid fa-folder-open" style="font-size: 40px; color: var(--accent-blue); margin-bottom: 15px;"></i>
                             <h3 style="margin-bottom: 5px;">前端开发组</h3>
@@ -953,7 +948,7 @@
                             </div>
                         </div>
                         <div class="glass-card folder-card add-category" onclick="openCategoryModal()">
-                            <i class="fa-solid fa-plus" style="font-size: 30px; color: var(--text-muted);"></i>
+                            <i class="fa-solid fa-plus" style="font-size: 30px; color: var(--text-muted); margin-bottom: 15px;"></i>
                             <h3>新建智能分类</h3>
                         </div>
                     </div>

@@ -523,173 +523,6 @@
             transition: 0.3s;
         }
         .modal-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(59,130,246,0.4); }
-
-        /* 新建分类弹窗样式 */
-        .category-modal {
-            position: fixed;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1001;
-        }
-        .category-modal.active { display: flex; }
-
-        .category-modal .modal-content {
-            width: 420px;
-            padding: 35px;
-        }
-
-        .category-modal .modal-content h2 {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 25px;
-            font-size: 20px;
-        }
-
-        .category-modal .form-group {
-            margin-bottom: 20px;
-        }
-
-        .category-modal .form-group label {
-            display: block;
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-            font-weight: 500;
-        }
-
-        .category-modal .form-input {
-            width: 100%;
-            padding: 12px 16px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            color: var(--text-main);
-            font-size: 14px;
-            transition: 0.3s;
-        }
-        .category-modal .form-input:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-        .category-modal .form-input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .icon-picker {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
-        }
-
-        .icon-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: rgba(0,0,0,0.2);
-            color: var(--text-muted);
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .icon-btn:hover {
-            border-color: var(--accent-blue);
-            color: var(--accent-blue);
-            background: rgba(59,130,246,0.1);
-        }
-        .icon-btn.selected {
-            border-color: var(--accent-blue);
-            color: var(--accent-blue);
-            background: rgba(59,130,246,0.2);
-            box-shadow: 0 0 15px rgba(59,130,246,0.3);
-        }
-
-        .color-picker {
-            display: flex;
-            gap: 12px;
-        }
-
-        .color-btn {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .color-btn:hover {
-            transform: scale(1.1);
-        }
-        .color-btn.selected {
-            border-color: white;
-            transform: scale(1.15);
-            box-shadow: 0 0 15px currentColor;
-        }
-
-        .category-modal .modal-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 25px;
-        }
-
-        .category-modal .modal-btn.secondary {
-            flex: 1;
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: rgba(255,255,255,0.05);
-            color: var(--text-main);
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .category-modal .modal-btn.secondary:hover {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .category-modal .modal-btn.primary {
-            flex: 1;
-            padding: 12px;
-            border-radius: 12px;
-            border: none;
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-            color: white;
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .category-modal .modal-btn.primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(59,130,246,0.4);
-        }
-
-        .add-category {
-            border: 2px dashed var(--glass-border);
-            background: rgba(0,0,0,0.15);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 180px;
-        }
-        .add-category:hover {
-            border-color: var(--accent-blue);
-            background: rgba(59,130,246,0.05);
-            transform: translateY(-5px);
-        }
-        .add-category:hover i,
-        .add-category:hover h3 {
-            color: var(--accent-blue);
-        }
     </style>
 </head>
 <body>
@@ -700,7 +533,7 @@
 
     <!-- 解析完成弹窗 -->
     <div class="result-modal" id="result-modal">
-        <div class="modal-backdrop" onclick="closeResultModal()"></div>
+        <div class="modal-backdrop"></div>
         <div class="modal-content">
             <div class="modal-icon success">
                 <i class="fa-solid fa-check"></i>
@@ -709,60 +542,6 @@
             <p>成功处理 <strong id="modal-count">0</strong> 份简历</p>
             <p class="hint">解析结果已输出到控制台</p>
             <button class="modal-btn" onclick="closeResultModal()">确定</button>
-        </div>
-    </div>
-
-    <!-- 新建分类弹窗 -->
-    <div class="category-modal" id="category-modal">
-        <div class="modal-backdrop" onclick="closeCategoryModal()"></div>
-        <div class="modal-content">
-            <h2><i class="fa-solid fa-folder-plus"></i> 新建智能分类</h2>
-            
-            <div class="form-group">
-                <label>分类名称</label>
-                <input type="text" class="form-input" id="category-name" placeholder="输入分类名称">
-            </div>
-            
-            <div class="form-group">
-                <label>选择图标</label>
-                <div class="icon-picker" id="icon-picker">
-                    <button class="icon-btn selected" data-icon="folder-open" onclick="selectIcon(this)">
-                        <i class="fa-solid fa-folder-open"></i>
-                    </button>
-                    <button class="icon-btn" data-icon="users" onclick="selectIcon(this)">
-                        <i class="fa-solid fa-users"></i>
-                    </button>
-                    <button class="icon-btn" data-icon="code" onclick="selectIcon(this)">
-                        <i class="fa-solid fa-code"></i>
-                    </button>
-                    <button class="icon-btn" data-icon="robot" onclick="selectIcon(this)">
-                        <i class="fa-solid fa-robot"></i>
-                    </button>
-                    <button class="icon-btn" data-icon="briefcase" onclick="selectIcon(this)">
-                        <i class="fa-solid fa-briefcase"></i>
-                    </button>
-                    <button class="icon-btn" data-icon="graduation-cap" onclick="selectIcon(this)">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label>选择颜色</label>
-                <div class="color-picker" id="color-picker">
-                    <button class="color-btn selected" data-color="#3b82f6" style="background: #3b82f6;" onclick="selectColor(this)"></button>
-                    <button class="color-btn" data-color="#8b5cf6" style="background: #8b5cf6;" onclick="selectColor(this)"></button>
-                    <button class="color-btn" data-color="#10b981" style="background: #10b981;" onclick="selectColor(this)"></button>
-                    <button class="color-btn" data-color="#f59e0b" style="background: #f59e0b;" onclick="selectColor(this)"></button>
-                    <button class="color-btn" data-color="#ef4444" style="background: #ef4444;" onclick="selectColor(this)"></button>
-                    <button class="color-btn" data-color="#06b6d4" style="background: #06b6d4;" onclick="selectColor(this)"></button>
-                </div>
-            </div>
-            
-            <div class="modal-actions">
-                <button class="modal-btn secondary" type="button" onclick="closeCategoryModal()">取消</button>
-                <button class="modal-btn primary" type="button" onclick="createCategory()">创建</button>
-            </div>
         </div>
     </div>
 
@@ -930,7 +709,7 @@
 
                 <!-- ================= 4. 人才库管理 ================= -->
                 <div id="view-categories" class="view-section">
-                    <div class="category-grid" id="category-grid">
+                    <div class="category-grid">
                         <div class="glass-card folder-card">
                             <i class="fa-solid fa-folder-open" style="font-size: 40px; color: var(--accent-blue); margin-bottom: 15px;"></i>
                             <h3 style="margin-bottom: 5px;">前端开发组</h3>
@@ -952,8 +731,8 @@
                                 <div style="width:30px; height:30px; border-radius:50%; background:rgba(0,0,0,0.5); border:2px solid #1e222d; margin-left:-10px; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">+87</div>
                             </div>
                         </div>
-                        <div class="glass-card folder-card add-category" onclick="openCategoryModal()">
-                            <i class="fa-solid fa-plus" style="font-size: 30px; color: var(--text-muted);"></i>
+                        <div class="glass-card folder-card" style="border: 2px dashed var(--glass-border); background: rgba(0,0,0,0.2); box-shadow: var(--neu-in); display: flex; flex-direction: column; justify-content: center;">
+                            <i class="fa-solid fa-plus" style="font-size: 30px; color: var(--text-muted); margin-bottom: 15px;"></i>
                             <h3>新建智能分类</h3>
                         </div>
                     </div>
@@ -1233,104 +1012,6 @@
             progressFill.style.width = '0%';
             progressPercent.textContent = '0%';
         }
-
-        // 16. 打开新建分类弹窗
-        function openCategoryModal() {
-            document.getElementById('category-modal').classList.add('active');
-            document.getElementById('category-name').value = '';
-            document.querySelectorAll('.icon-btn').forEach((btn, i) => {
-                btn.classList.toggle('selected', i === 0);
-            });
-            document.querySelectorAll('.color-btn').forEach((btn, i) => {
-                btn.classList.toggle('selected', i === 0);
-            });
-        }
-
-        // 17. 关闭新建分类弹窗
-        function closeCategoryModal() {
-            document.getElementById('category-modal').classList.remove('active');
-        }
-
-        // 18. 选择图标
-        function selectIcon(btn) {
-            document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-        }
-
-        // 19. 选择颜色
-        function selectColor(btn) {
-            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-        }
-
-        // 20. 创建分类卡片
-        function createCategoryCard(category) {
-            const card = document.createElement('div');
-            card.className = 'glass-card folder-card';
-            card.dataset.id = category.id;
-            card.innerHTML = `
-                <i class="fa-solid fa-${category.icon}" style="font-size: 40px; color: ${category.color}; margin-bottom: 15px;"></i>
-                <h3 style="margin-bottom: 5px;">${category.name}</h3>
-                <p style="font-size: 13px; color: var(--text-muted);">共 ${category.count} 份简历</p>
-                <div class="avatars-overlap" style="visibility: ${category.count > 0 ? 'visible' : 'hidden'};">
-                    <div style="width:30px; height:30px; border-radius:50%; background:rgba(0,0,0,0.5); border:2px solid #1e222d; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">+${category.count}</div>
-                </div>
-            `;
-            return card;
-        }
-
-        // 21. 创建分类
-        function createCategory() {
-            const name = document.getElementById('category-name').value.trim();
-            if (!name) {
-                alert('请输入分类名称');
-                return;
-            }
-            
-            const icon = document.querySelector('.icon-btn.selected').dataset.icon;
-            const color = document.querySelector('.color-btn.selected').dataset.color;
-            
-            const category = {
-                id: Date.now().toString(),
-                name: name,
-                icon: icon,
-                color: color,
-                count: 0
-            };
-            
-            const categories = JSON.parse(localStorage.getItem('resumeCategories') || '[]');
-            categories.push(category);
-            localStorage.setItem('resumeCategories', JSON.stringify(categories));
-            
-            const grid = document.getElementById('category-grid');
-            const addCard = grid.querySelector('.add-category');
-            const card = createCategoryCard(category);
-            grid.insertBefore(card, addCard);
-            
-            closeCategoryModal();
-        }
-
-        // 22. 页面加载时渲染分类
-        function loadCategories() {
-            const categories = JSON.parse(localStorage.getItem('resumeCategories') || '[]');
-            const grid = document.getElementById('category-grid');
-            const addCard = grid.querySelector('.add-category');
-            
-            categories.forEach(cat => {
-                const card = createCategoryCard(cat);
-                grid.insertBefore(card, addCard);
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', loadCategories);
-
-        // ESC 键关闭弹窗
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeResultModal();
-                closeCategoryModal();
-            }
-        });
     </script>
 </body>
 </html>

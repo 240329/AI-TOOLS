@@ -419,12 +419,10 @@
                     <h3>导入流程清单</h3>
                     <p style="color: var(--text-muted); margin: 10px 0 20px;">支持导入 Excel / CSV 格式的流程标准文件。</p>
                     <div class="upload-area" id="drop-zone-flow">
-                        <input type="file" id="file-input-flow" accept=".xlsx,.xls,.csv" style="display: none;">
                         <i class="fa-solid fa-cloud-arrow-up"></i>
-                        <h3 id="upload-title-flow">点击或将文件拖拽到此处</h3>
-                        <p id="upload-subtitle-flow">支持 .xlsx, .csv 文件，最大 50MB</p>
-                        <p id="file-name-flow" style="display: none; color: var(--primary-color); margin-top: 10px;"></p>
-                        <button class="btn" id="select-btn-flow"><i class="fa-solid fa-folder-open"></i> 选择文件</button>
+                        <h3>点击或将文件拖拽到此处</h3>
+                        <p>支持 .xlsx, .csv 文件，最大 50MB</p>
+                        <button class="btn"><i class="fa-solid fa-folder-open"></i> 选择文件</button>
                     </div>
                 </div>
 
@@ -452,13 +450,11 @@
                 <div class="glass-card">
                     <h3>上传入职员工名单</h3>
                     <p style="color: var(--text-muted); margin: 10px 0 20px;">系统将自动识别部门与岗位，智能匹配对应流程。</p>
-                    <div class="upload-area" id="upload-area-employee">
-                        <input type="file" id="file-input-employee" accept=".xlsx,.xls,.csv" style="display: none;">
+                    <div class="upload-area">
                         <i class="fa-solid fa-file-excel"></i>
-                        <h3 id="upload-title-employee">拖拽员工名单表至此</h3>
-                        <p id="upload-subtitle-employee">请确保包含：姓名、入职日期、部门、岗位、邮箱</p>
-                        <p id="file-name-employee" style="display: none; color: var(--primary-color); margin-top: 10px;"></p>
-                        <button class="btn" id="select-btn-employee"><i class="fa-solid fa-upload"></i> 上传名单</button>
+                        <h3>拖拽员工名单表至此</h3>
+                        <p>请确保包含：姓名、入职日期、部门、岗位、邮箱</p>
+                        <button class="btn"><i class="fa-solid fa-upload"></i> 上传名单</button>
                     </div>
                 </div>
                 
@@ -558,111 +554,10 @@
             });
         });
 
-        // 流程知识库 - 文件上传功能
-        const flowUploadArea = document.getElementById('drop-zone-flow');
-        const fileInputFlow = document.getElementById('file-input-flow');
-        const selectBtnFlow = document.getElementById('select-btn-flow');
-        const uploadTitleFlow = document.getElementById('upload-title-flow');
-        const uploadSubtitleFlow = document.getElementById('upload-subtitle-flow');
-        const fileNameFlow = document.getElementById('file-name-flow');
-
-        selectBtnFlow.addEventListener('click', () => {
-            fileInputFlow.click();
-        });
-
-        fileInputFlow.addEventListener('change', (e) => {
-            handleFlowFile(e.target.files[0]);
-        });
-
-        flowUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            flowUploadArea.classList.add('dragover');
-        });
-
-        flowUploadArea.addEventListener('dragleave', () => {
-            flowUploadArea.classList.remove('dragover');
-        });
-
-        flowUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            flowUploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                handleFlowFile(file);
-            }
-        });
-
-        function handleFlowFile(file) {
-            if (!file) return;
-
-            const validTypes = [
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'application/vnd.ms-excel',
-                'text/csv'
-            ];
-            const validExtensions = ['.xlsx', '.xls', '.csv'];
-            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
-            if (!validExtensions.includes(fileExtension)) {
-                showUploadError('仅支持 .xlsx, .xls, .csv 格式文件');
-                return;
-            }
-
-            if (file.size > 50 * 1024 * 1024) {
-                showUploadError('文件大小超过 50MB 限制');
-                return;
-            }
-
-            const icon = flowUploadArea.querySelector('i');
-            icon.className = 'fa-solid fa-spinner fa-spin';
-            icon.style.color = 'var(--primary-color)';
-            uploadTitleFlow.textContent = '正在解析文件...';
-            uploadSubtitleFlow.style.display = 'none';
-            fileNameFlow.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
-            fileNameFlow.style.display = 'block';
-
-            setTimeout(() => {
-                icon.className = 'fa-solid fa-circle-check';
-                icon.style.color = '#00e676';
-                uploadTitleFlow.textContent = '文件解析成功！';
-                fileNameFlow.style.display = 'none';
-
-                setTimeout(() => {
-                    icon.className = 'fa-solid fa-cloud-arrow-up';
-                    icon.style.color = 'var(--primary-color)';
-                    uploadTitleFlow.textContent = '点击或将文件拖拽到此处';
-                    uploadSubtitleFlow.style.display = 'block';
-                    fileInputFlow.value = '';
-                }, 3000);
-            }, 1500);
-        }
-
-        function showUploadError(message) {
-            const icon = flowUploadArea.querySelector('i');
-            const originalTitle = uploadTitleFlow.textContent;
-            icon.className = 'fa-solid fa-circle-exclamation';
-            icon.style.color = '#ff5252';
-            uploadTitleFlow.textContent = message;
-
-            setTimeout(() => {
-                icon.className = 'fa-solid fa-cloud-arrow-up';
-                icon.style.color = 'var(--primary-color)';
-                uploadTitleFlow.textContent = originalTitle;
-            }, 3000);
-        }
-
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-        }
-
-        // 其他上传区域（保留拖拽功能）
+        // 模拟拖拽上传的交互动效
         const uploadAreas = document.querySelectorAll('.upload-area');
         
         uploadAreas.forEach(area => {
-            if (area.id === 'drop-zone-flow') return;
-            
             area.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 area.classList.add('dragover');
@@ -676,6 +571,7 @@
                 e.preventDefault();
                 area.classList.remove('dragover');
                 
+                // 模拟酷炫的上传成功效果
                 const icon = area.querySelector('i');
                 const title = area.querySelector('h3');
                 
@@ -684,110 +580,17 @@
                 title.textContent = '文件解析成功！';
                 
                 setTimeout(() => {
-                    icon.className = 'fa-solid fa-file-excel';
+                    // 恢复原状
+                    if(area.id === 'drop-zone-flow') {
+                        icon.className = 'fa-solid fa-cloud-arrow-up';
+                    } else {
+                        icon.className = 'fa-solid fa-file-excel';
+                    }
                     icon.style.color = 'var(--primary-color)';
                     title.textContent = '继续拖拽文件至此';
                 }, 3000);
             });
         });
-
-        // 员工名单 - 文件上传功能
-        const employeeUploadArea = document.getElementById('upload-area-employee');
-        const fileInputEmployee = document.getElementById('file-input-employee');
-        const selectBtnEmployee = document.getElementById('select-btn-employee');
-        const uploadTitleEmployee = document.getElementById('upload-title-employee');
-        const uploadSubtitleEmployee = document.getElementById('upload-subtitle-employee');
-        const fileNameEmployee = document.getElementById('file-name-employee');
-
-        selectBtnEmployee.addEventListener('click', () => {
-            fileInputEmployee.click();
-        });
-
-        fileInputEmployee.addEventListener('change', (e) => {
-            handleEmployeeFile(e.target.files[0]);
-        });
-
-        employeeUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            employeeUploadArea.classList.add('dragover');
-        });
-
-        employeeUploadArea.addEventListener('dragleave', () => {
-            employeeUploadArea.classList.remove('dragover');
-        });
-
-        employeeUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            employeeUploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                handleEmployeeFile(file);
-            }
-        });
-
-        function handleEmployeeFile(file) {
-            if (!file) return;
-
-            const validExtensions = ['.xlsx', '.xls', '.csv'];
-            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
-            if (!validExtensions.includes(fileExtension)) {
-                showEmployeeUploadError('仅支持 .xlsx, .xls, .csv 格式文件');
-                return;
-            }
-
-            if (file.size > 50 * 1024 * 1024) {
-                showEmployeeUploadError('文件大小超过 50MB 限制');
-                return;
-            }
-
-            const icon = employeeUploadArea.querySelector('i');
-            const btn = selectBtnEmployee;
-            const originalBtnText = btn.innerHTML;
-
-            icon.className = 'fa-solid fa-spinner fa-spin';
-            icon.style.color = 'var(--primary-color)';
-            uploadTitleEmployee.textContent = '正在识别员工信息...';
-            uploadSubtitleEmployee.style.display = 'none';
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 解析中...';
-            btn.style.pointerEvents = 'none';
-            fileNameEmployee.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
-            fileNameEmployee.style.display = 'block';
-
-            setTimeout(() => {
-                icon.className = 'fa-solid fa-circle-check';
-                icon.style.color = '#00e676';
-                uploadTitleEmployee.textContent = '名单导入成功！';
-                btn.innerHTML = '<i class="fa-solid fa-check"></i> 导入成功';
-                btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
-                fileNameEmployee.style.display = 'none';
-
-                setTimeout(() => {
-                    icon.className = 'fa-solid fa-file-excel';
-                    icon.style.color = 'var(--primary-color)';
-                    uploadTitleEmployee.textContent = '拖拽员工名单表至此';
-                    uploadSubtitleEmployee.style.display = 'block';
-                    btn.innerHTML = originalBtnText;
-                    btn.style.background = '';
-                    btn.style.pointerEvents = 'auto';
-                    fileInputEmployee.value = '';
-                }, 3000);
-            }, 2000);
-        }
-
-        function showEmployeeUploadError(message) {
-            const icon = employeeUploadArea.querySelector('i');
-            const originalTitle = uploadTitleEmployee.textContent;
-            icon.className = 'fa-solid fa-circle-exclamation';
-            icon.style.color = '#ff5252';
-            uploadTitleEmployee.textContent = message;
-
-            setTimeout(() => {
-                icon.className = 'fa-solid fa-file-excel';
-                icon.style.color = 'var(--primary-color)';
-                uploadTitleEmployee.textContent = originalTitle;
-            }, 3000);
-        }
 
         // 按钮点击反馈动画
         function triggerPushAnimation(btn) {
