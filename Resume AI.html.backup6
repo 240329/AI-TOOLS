@@ -690,32 +690,6 @@
         .add-category:hover h3 {
             color: var(--accent-blue);
         }
-
-        .card-delete-btn {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            border: none;
-            background: transparent;
-            color: transparent;
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            z-index: 10;
-        }
-        .card-delete-btn:hover {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-        }
-        .folder-card {
-            position: relative;
-        }
     </style>
 </head>
 <body>
@@ -1295,9 +1269,6 @@
             card.className = 'glass-card folder-card';
             card.dataset.id = category.id;
             card.innerHTML = `
-                <button class="card-delete-btn" onclick="deleteCategory('${category.id}')">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
                 <i class="fa-solid fa-${category.icon}" style="font-size: 40px; color: ${category.color}; margin-bottom: 15px;"></i>
                 <h3 style="margin-bottom: 5px;">${category.name}</h3>
                 <p style="font-size: 13px; color: var(--text-muted);">共 ${category.count} 份简历</p>
@@ -1306,17 +1277,6 @@
                 </div>
             `;
             return card;
-        }
-
-        // 20.1 删除分类
-        function deleteCategory(id) {
-            const card = document.querySelector(`.folder-card[data-id="${id}"]`);
-            if (card) {
-                card.remove();
-                const categories = JSON.parse(localStorage.getItem('resumeCategories') || '[]');
-                const filtered = categories.filter(c => c.id !== id);
-                localStorage.setItem('resumeCategories', JSON.stringify(filtered));
-            }
         }
 
         // 21. 创建分类

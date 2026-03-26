@@ -485,37 +485,111 @@
 
             <!-- 视图 4：定时推送任务 -->
             <section id="push-tasks" class="view-section">
-                <div class="glass-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <div>
-                            <h3>新建推送计划</h3>
-                            <p style="color: var(--text-muted); margin-top: 5px;">通过邮件或企业微信自动触达入职员工</p>
+                <!-- 飞书机器人状态 -->
+                <div class="glass-card" style="padding: 15px 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="fa-brands fa-rocketchat" style="font-size: 24px; color: var(--primary-color);"></i>
+                            <div>
+                                <span style="font-weight: 500;">飞书应用机器人</span>
+                                <span id="feishu-status" style="margin-left: 10px; padding: 3px 10px; border-radius: 12px; font-size: 12px; background: rgba(255,100,100,0.2); color: #ff6b6b;">未连接</span>
+                            </div>
                         </div>
-                        <button class="btn" onclick="triggerPushAnimation(this)">
-                            <i class="fa-solid fa-bolt"></i> 立即创建计划
+                        <button class="btn" style="padding: 8px 20px; font-size: 14px;" onclick="refreshFeishuStatus()">
+                            <i class="fa-solid fa-rotate"></i> 刷新状态
                         </button>
                     </div>
+                </div>
+
+                <!-- 新建推送计划 -->
+                <div class="glass-card">
+                    <h3>新建推送计划</h3>
+                    <p style="color: var(--text-muted); margin: 10px 0 20px;">通过飞书应用机器人自动触达入职员工</p>
                     
                     <div style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">计划名称</label>
+                            <input type="text" id="task-name" placeholder="例如：11月新员工入职流程推送" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; outline: none; box-sizing: border-box;">
+                        </div>
+                        
                         <div style="display: flex; gap: 20px; margin-bottom: 15px;">
                             <div style="flex: 1;">
-                                <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">选择目标员工群</label>
-                                <select style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; outline: none;">
-                                    <option style="color: black;">11月研发部新员工 (12人)</option>
-                                    <option style="color: black;">11月全体新员工 (45人)</option>
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">目标员工群</label>
+                                <select id="task-target" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; outline: none;">
+                                    <option value="all" style="color: black;">全体新员工</option>
+                                    <option value="department" style="color: black;">按部门选择</option>
                                 </select>
                             </div>
+                            <div style="flex: 1; display: none;" id="department-select-container">
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">选择部门</label>
+                                <select id="task-department" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; outline: none;">
+                                    <option value="研发部" style="color: black;">研发部</option>
+                                    <option value="财务部" style="color: black;">财务部</option>
+                                    <option value="行政部" style="color: black;">行政部</option>
+                                    <option value="市场部" style="color: black;">市场部</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 20px; margin-bottom: 15px;">
                             <div style="flex: 1;">
-                                <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">推送时间设定</label>
-                                <input type="datetime-local" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; outline: none; color-scheme: dark;">
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">推送时间</label>
+                                <input type="datetime-local" id="task-time" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; outline: none; color-scheme: dark;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">重复周期</label>
+                                <select id="task-recurrence" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; outline: none;">
+                                    <option value="once" style="color: black;">单次执行</option>
+                                    <option value="daily" style="color: black;">每天</option>
+                                    <option value="weekly" style="color: black;">每周</option>
+                                    <option value="monthly" style="color: black;">每月</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">选择推送流程</label>
+                            <div id="task-flows" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" value="P-001" checked> <span>P-001: 新员工入职指引</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" value="P-002"> <span>P-002: 权限开通规范</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" value="P-003"> <span>P-003: 企业文化指南</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" value="P-004"> <span>P-004: 考勤与设备领用</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 8px 15px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">
+                                    <input type="checkbox" value="P-005"> <span>P-005: 系统账号激活</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button class="btn" onclick="createTask(this)">
+                            <i class="fa-solid fa-bolt"></i> 创建推送计划
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 推送任务列表 -->
+                <div class="glass-card">
+                    <h3>推送任务列表</h3>
+                    <div id="task-list" class="data-list">
+                        <div class="list-item">
+                            <div class="item-info">
+                                <h4>暂无推送任务</h4>
+                                <p>请在上方创建新的推送计划</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- 智能推送日历 -->
                 <div class="glass-card">
                     <h3>智能推送日历</h3>
-                    <!-- 模拟的一个很酷的日历或时间轴 UI -->
                     <div style="position: relative; padding-left: 20px; border-left: 2px solid var(--glass-border); margin-top: 20px;">
                         <div style="position: relative; margin-bottom: 25px;">
                             <div style="position: absolute; left: -26px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color); box-shadow: 0 0 10px var(--primary-color);"></div>
@@ -806,6 +880,241 @@
                 }, 2000);
             }, 1500);
         }
+
+        // ==================== 飞书机器人相关功能 ====================
+
+        const API_BASE = 'http://localhost:3000/api';
+
+        // 刷新飞书连接状态
+        async function refreshFeishuStatus() {
+            const statusEl = document.getElementById('feishu-status');
+            try {
+                const res = await fetch(`${API_BASE}/status`);
+                const data = await res.json();
+                if (data.success && data.data.connected) {
+                    statusEl.textContent = '已连接';
+                    statusEl.style.background = 'rgba(0,230,118,0.2)';
+                    statusEl.style.color = '#00e676';
+                } else {
+                    statusEl.textContent = '未连接';
+                    statusEl.style.background = 'rgba(255,100,100,0.2)';
+                    statusEl.style.color = '#ff6b6b';
+                }
+            } catch (err) {
+                statusEl.textContent = '离线';
+                statusEl.style.background = 'rgba(255,100,100,0.2)';
+                statusEl.style.color = '#ff6b6b';
+            }
+        }
+
+        // 初始化时获取飞书状态
+        refreshFeishuStatus();
+        setInterval(refreshFeishuStatus, 30000);
+
+        // 目标员工群切换
+        document.getElementById('task-target').addEventListener('change', function() {
+            const deptContainer = document.getElementById('department-select-container');
+            deptContainer.style.display = this.value === 'department' ? 'block' : 'none';
+        });
+
+        // 获取选中的流程
+        function getSelectedFlows() {
+            const checkboxes = document.querySelectorAll('#task-flows input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        // 创建推送任务
+        async function createTask(btn) {
+            const name = document.getElementById('task-name').value.trim();
+            const targetType = document.getElementById('task-target').value;
+            const targetDepartment = document.getElementById('task-department').value;
+            const scheduleTime = document.getElementById('task-time').value;
+            const recurrence = document.getElementById('task-recurrence').value;
+            const flows = getSelectedFlows();
+
+            if (!name) {
+                alert('请输入计划名称');
+                return;
+            }
+            if (!scheduleTime) {
+                alert('请选择推送时间');
+                return;
+            }
+            if (flows.length === 0) {
+                alert('请至少选择一个推送流程');
+                return;
+            }
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 创建中...';
+            btn.style.pointerEvents = 'none';
+
+            try {
+                const res = await fetch(`${API_BASE}/tasks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        targetType,
+                        targetDepartment: targetType === 'department' ? targetDepartment : null,
+                        scheduleTime,
+                        recurrence,
+                        flows
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> 创建成功';
+                    btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
+                    
+                    // 清空表单
+                    document.getElementById('task-name').value = '';
+                    document.getElementById('task-time').value = '';
+                    
+                    // 刷新任务列表
+                    loadTaskList();
+                } else {
+                    alert('创建失败: ' + (data.error || '未知错误'));
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                }
+            } catch (err) {
+                alert('请求失败: ' + err.message);
+                btn.innerHTML = originalText;
+                btn.style.background = '';
+            }
+
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.background = '';
+                btn.style.pointerEvents = 'auto';
+            }, 2000);
+        }
+
+        // 加载任务列表
+        async function loadTaskList() {
+            const listEl = document.getElementById('task-list');
+            
+            try {
+                const res = await fetch(`${API_BASE}/tasks`);
+                const data = await res.json();
+                
+                if (!data.success || data.data.length === 0) {
+                    listEl.innerHTML = `
+                        <div class="list-item">
+                            <div class="item-info">
+                                <h4>暂无推送任务</h4>
+                                <p>请在上方创建新的推送计划</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                listEl.innerHTML = data.data.map(task => {
+                    const statusBadge = task.status === 'pending' 
+                        ? `<span class="badge" style="color: #ff9100; border-color: rgba(255,145,0,0.3); background: rgba(255,145,0,0.1);">等待执行</span>`
+                        : `<span class="badge" style="color: #00e676; border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1);">已完成</span>`;
+                    
+                    const recurrenceText = {
+                        'once': '单次',
+                        'daily': '每日',
+                        'weekly': '每周',
+                        'monthly': '每月'
+                    }[task.recurrence] || '单次';
+
+                    const timeStr = new Date(task.scheduleTime).toLocaleString('zh-CN');
+                    const flowCount = task.flows ? task.flows.length : 0;
+
+                    return `
+                        <div class="list-item" data-task-id="${task.id}">
+                            <div class="item-info">
+                                <h4>${task.name}</h4>
+                                <p>${timeStr} | ${recurrenceText} | ${flowCount}个流程</p>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                ${task.status === 'pending' ? `
+                                    <button class="btn" style="padding: 8px 16px; font-size: 13px;" onclick="triggerTask('${task.id}', this)">
+                                        <i class="fa-solid fa-paper-plane"></i> 立即推送
+                                    </button>
+                                ` : ''}
+                                <button class="btn" style="padding: 8px 16px; font-size: 13px; background: linear-gradient(90deg, #ff6b6b, #ff8e53);" onclick="deleteTask('${task.id}', this)">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                listEl.innerHTML = `
+                    <div class="list-item">
+                        <div class="item-info">
+                            <h4>无法加载任务</h4>
+                            <p>请确保后端服务已启动 (localhost:3000)</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // 删除任务
+        async function deleteTask(taskId, btn) {
+            if (!confirm('确定要删除这个推送任务吗？')) return;
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.style.pointerEvents = 'none';
+
+            try {
+                const res = await fetch(`${API_BASE}/tasks/${taskId}`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    loadTaskList();
+                } else {
+                    alert('删除失败');
+                    btn.innerHTML = originalText;
+                }
+            } catch (err) {
+                alert('请求失败: ' + err.message);
+                btn.innerHTML = originalText;
+            }
+
+            btn.style.pointerEvents = 'auto';
+        }
+
+        // 手动触发任务
+        async function triggerTask(taskId, btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.style.pointerEvents = 'none';
+
+            try {
+                const res = await fetch(`${API_BASE}/tasks/${taskId}/trigger`, { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> 已发送';
+                    btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
+                    setTimeout(loadTaskList, 2000);
+                } else {
+                    alert('发送失败');
+                    btn.innerHTML = originalText;
+                }
+            } catch (err) {
+                alert('请求失败: ' + err.message);
+                btn.innerHTML = originalText;
+            }
+
+            setTimeout(() => {
+                btn.style.pointerEvents = 'auto';
+            }, 2000);
+        }
+
+        // 页面加载时获取任务列表
+        loadTaskList();
     </script>
 </body>
 </html>
