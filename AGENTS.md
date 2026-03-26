@@ -1,28 +1,36 @@
 # AGENTS.md - AI Tools Repository
 
 ## Overview
-This repository contains static HTML projects including portfolio sites, resume templates, and AI studio interfaces. No build system or test framework is configured.
+This repository contains portfolio websites and a Node.js server for the Dreame AI Tools platform.
+
+- **Static Sites**: index.html, FlowHub.html, Resume AI.html, V-GEN STUDIO.html, Visionary AI.html
+- **Backend**: server.js (Express + 飞书Bot定时推送), config.js (应用配置)
+- **Stack**: Node.js >= 16.0.0, Express, node-schedule, @larksuiteoapi/node-sdk
 
 ## Project Structure
 ```
-├── FlowHub.html          # FlowHub portfolio site
-├── Resume AI.html        # AI resume template
-├── V-GEN STUDIO.html    # V-GEN STUDIO portfolio
-├── Visionary AI.html    # Visionary AI portfolio
-├── index.html           # Main landing page
-└── *.backup             # Backup files
+├── index.html               # Main landing page
+├── FlowHub.html             # FlowHub portfolio site
+├── Resume AI.html           # AI resume template
+├── V-GEN STUDIO.html        # V-GEN STUDIO portfolio
+├── Visionary AI.html        # Visionary AI portfolio
+├── server.js                # Express server (飞书Bot定时推送)
+├── config.js                # Application configuration
+├── package.json             # Node.js dependencies
+├── *.backup                 # Backup files
+└── node_modules/            # Dependencies (do not commit)
 ```
 
 ## Commands
 
 ### Running Locally
-Since this is a static HTML project, open files directly in a browser or use a simple HTTP server:
 ```bash
-# Python 3
+# Static HTML - open in browser or use HTTP server
 python -m http.server 8000
 
-# Or using Node.js (if installed)
-npx serve .
+# Node.js server
+npm install
+npm start
 ```
 
 ### Linting
