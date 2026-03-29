@@ -1,11 +1,13 @@
 # AGENTS.md - AI Tools Repository
 
 ## Overview
-This repository contains portfolio websites and a Node.js server for the Dreame AI Tools platform.
+This repository contains the **FlowHub** system - a HR intelligent flow push platform for Dreame Technology.
 
-- **Static Sites**: index.html, FlowHub.html, Resume AI.html, V-GEN STUDIO.html, Visionary AI.html
-- **Backend**: server.js (Express + 飞书Bot定时推送), config.js (应用配置)
-- **Stack**: Node.js >= 16.0.0, Express, node-schedule, @larksuiteoapi/node-sdk
+- **Core Function**: Employee onboarding flow management + Feishu (Lark) bot push notification
+- **Features**: Employee import, flow matching by position, scheduled push tasks
+- **Backend**: server.js (Express + MySQL + 飞书Bot定时推送), config.js (飞书应用配置)
+- **Frontend**: FlowHub.html (management dashboard), static portfolio pages
+- **Stack**: Node.js >= 16.0.0, Express, MySQL, node-schedule, @larksuiteoapi/node-sdk, multer, xlsx
 
 ## Project Structure
 ```
@@ -51,11 +53,11 @@ This project has no test framework (no Jest, Vitest, etc.).
 ## Code Style Guidelines
 
 ### General
-- This is a **static HTML/CSS/JS** project - no TypeScript or modern frameworks
-- All code is vanilla HTML, CSS, and JavaScript
-- Keep JavaScript minimal and inline or in script tags
-- No external build tools (webpack, vite, etc.)
-- No package.json or npm dependencies
+- This is a **Node.js + Express backend** with **static HTML frontend**
+- Backend: server.js (Node.js/Express)
+- Frontend: HTML files with inline CSS/JS
+- No TypeScript or modern frameworks
+- Use npm for dependency management
 
 ### HTML Conventions
 - Use semantic HTML5 elements (`<header>`, `<main>`, `<footer>`, `<nav>`, `<section>`)
@@ -151,8 +153,8 @@ This project has no test framework (no Jest, Vitest, etc.).
 - Push changes to remote after commits
 
 ## Notes for Agents
-- This is a simple static site - no complex build processes
+- This is a Node.js + Express backend with static HTML frontend
 - Avoid adding Node.js dependencies unless explicitly requested
 - Ask user before adding new files or making significant changes
-- Do not commit secrets or API keys
+- Do not commit secrets or API keys (config.js contains credentials)
 - Always verify changes work in browser before considering complete
