@@ -6,6 +6,15 @@ module.exports = {
   // 服务配置
   port: 3000,
   
+  // 数据库配置
+  database: {
+    host: 'localhost',
+    port: 3306,
+    user: 'root',
+    password: 'Dreame2026',
+    database: 'flowhub'
+  },
+  
   // 定时任务配置
   scheduler: {
     maxTasks: 100,  // 最大任务数

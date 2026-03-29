@@ -417,12 +417,12 @@
             <section id="knowledge" class="view-section">
                 <div class="glass-card">
                     <h3>导入流程清单</h3>
-                    <p style="color: var(--text-muted); margin: 10px 0 20px;">支持导入 Excel / CSV 格式的流程标准文件。格式：名称 | 适配岗位 | 链接</p>
+                    <p style="color: var(--text-muted); margin: 10px 0 20px;">支持导入 Excel / CSV 格式的流程标准文件。</p>
                     <div class="upload-area" id="drop-zone-flow">
                         <input type="file" id="file-input-flow" accept=".xlsx,.xls,.csv" style="display: none;">
                         <i class="fa-solid fa-cloud-arrow-up"></i>
                         <h3 id="upload-title-flow">点击或将文件拖拽到此处</h3>
-                        <p id="upload-subtitle-flow">列顺序：名称 → 适配岗位(逗号分隔) → 云文档链接</p>
+                        <p id="upload-subtitle-flow">支持 .xlsx, .csv 文件，最大 50MB</p>
                         <p id="file-name-flow" style="display: none; color: var(--primary-color); margin-top: 10px;"></p>
                         <button class="btn" id="select-btn-flow"><i class="fa-solid fa-folder-open"></i> 选择文件</button>
                     </div>
@@ -921,7 +921,7 @@
                             <div class="list-item">
                                 <div class="item-info">
                                     <h4>${flow.id}: ${flow.name}</h4>
-                                    <p>适配岗位：${flow.positions || '未设置'}</p>
+                                    <p>标签：${flow.tags || '通用'} | 适用对象：${flow.target || '全体员工'}</p>
                                 </div>
                             </div>
                         `).join('');

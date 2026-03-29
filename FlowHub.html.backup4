@@ -417,12 +417,12 @@
             <section id="knowledge" class="view-section">
                 <div class="glass-card">
                     <h3>导入流程清单</h3>
-                    <p style="color: var(--text-muted); margin: 10px 0 20px;">支持导入 Excel / CSV 格式的流程标准文件。格式：名称 | 适配岗位 | 链接</p>
+                    <p style="color: var(--text-muted); margin: 10px 0 20px;">支持导入 Excel / CSV 格式的流程标准文件。</p>
                     <div class="upload-area" id="drop-zone-flow">
                         <input type="file" id="file-input-flow" accept=".xlsx,.xls,.csv" style="display: none;">
                         <i class="fa-solid fa-cloud-arrow-up"></i>
                         <h3 id="upload-title-flow">点击或将文件拖拽到此处</h3>
-                        <p id="upload-subtitle-flow">列顺序：名称 → 适配岗位(逗号分隔) → 云文档链接</p>
+                        <p id="upload-subtitle-flow">支持 .xlsx, .csv 文件，最大 50MB</p>
                         <p id="file-name-flow" style="display: none; color: var(--primary-color); margin-top: 10px;"></p>
                         <button class="btn" id="select-btn-flow"><i class="fa-solid fa-folder-open"></i> 选择文件</button>
                     </div>
@@ -430,11 +430,17 @@
 
                 <div class="glass-card">
                     <h3>当前系统流程清单 (节选)</h3>
-                    <div class="data-list" id="flow-list">
+                    <div class="data-list">
                         <div class="list-item">
                             <div class="item-info">
-                                <h4>加载中...</h4>
-                                <p>正在从数据库获取流程列表</p>
+                                <h4>P-001: 新员工入职指引</h4>
+                                <p>标签：入职, HR流程 | 适用对象：全体新员工</p>
+                            </div>
+                        </div>
+                        <div class="list-item">
+                            <div class="item-info">
+                                <h4>P-002: 研发中心权限开通规范</h4>
+                                <p>标签：IT, 研发 | 适用对象：研发部员工</p>
                             </div>
                         </div>
                     </div>
@@ -634,6 +640,11 @@
         function handleFlowFile(file) {
             if (!file) return;
 
+            const validTypes = [
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-excel',
+                'text/csv'
+            ];
             const validExtensions = ['.xlsx', '.xls', '.csv'];
             const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
@@ -648,54 +659,27 @@
             }
 
             const icon = flowUploadArea.querySelector('i');
-            const btn = selectBtnFlow;
-            const originalBtnText = btn.innerHTML;
-
             icon.className = 'fa-solid fa-spinner fa-spin';
             icon.style.color = 'var(--primary-color)';
-            uploadTitleFlow.textContent = '正在上传文件...';
+            uploadTitleFlow.textContent = '正在解析文件...';
             uploadSubtitleFlow.style.display = 'none';
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 上传中...';
-            btn.style.pointerEvents = 'none';
             fileNameFlow.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
             fileNameFlow.style.display = 'block';
 
-            const formData = new FormData();
-            formData.append('file', file);
+            setTimeout(() => {
+                icon.className = 'fa-solid fa-circle-check';
+                icon.style.color = '#00e676';
+                uploadTitleFlow.textContent = '文件解析成功！';
+                fileNameFlow.style.display = 'none';
 
-            fetch(`${API_BASE}/flows/upload`, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    icon.className = 'fa-solid fa-circle-check';
-                    icon.style.color = '#00e676';
-                    uploadTitleFlow.textContent = data.message || '流程清单导入成功！';
-                    btn.innerHTML = '<i class="fa-solid fa-check"></i> 导入成功';
-                    btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
-                    loadFlowList();
-                } else {
-                    throw new Error(data.error || '上传失败');
-                }
-            })
-            .catch(err => {
-                showUploadError('上传失败: ' + err.message);
-            })
-            .finally(() => {
                 setTimeout(() => {
                     icon.className = 'fa-solid fa-cloud-arrow-up';
                     icon.style.color = 'var(--primary-color)';
                     uploadTitleFlow.textContent = '点击或将文件拖拽到此处';
                     uploadSubtitleFlow.style.display = 'block';
-                    btn.innerHTML = originalBtnText;
-                    btn.style.background = '';
-                    btn.style.pointerEvents = 'auto';
-                    fileNameFlow.style.display = 'none';
                     fileInputFlow.value = '';
                 }, 3000);
-            });
+            }, 1500);
         }
 
         function showUploadError(message) {
@@ -908,41 +892,6 @@
 
         loadEmployeeList();
 
-        // 加载流程列表
-        function loadFlowList() {
-            const listEl = document.getElementById('flow-list');
-            if (!listEl) return;
-
-            fetch(`${API_BASE}/flows`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.data.length > 0) {
-                        listEl.innerHTML = data.data.slice(0, 5).map(flow => `
-                            <div class="list-item">
-                                <div class="item-info">
-                                    <h4>${flow.id}: ${flow.name}</h4>
-                                    <p>适配岗位：${flow.positions || '未设置'}</p>
-                                </div>
-                            </div>
-                        `).join('');
-                    } else {
-                        listEl.innerHTML = `
-                            <div class="list-item">
-                                <div class="item-info">
-                                    <h4>暂无流程数据</h4>
-                                    <p>请上传流程清单文件</p>
-                                </div>
-                            </div>
-                        `;
-                    }
-                })
-                .catch(err => {
-                    console.error('加载流程列表失败:', err);
-                });
-        }
-
-        loadFlowList();
-
         // ==================== 飞书机器人相关功能 ====================
 
         // 刷新飞书连接状态
@@ -1081,8 +1030,8 @@
                     const timeStr = new Date(task.scheduleTime).toLocaleString('zh-CN');
 
                     return `
-                        <div class="list-item" data-task-id="${task.id}" style="display: flex; align-items: center;">
-                            <div class="item-info" style="flex: 1;">
+                        <div class="list-item" data-task-id="${task.id}">
+                            <div class="item-info">
                                 <h4>${task.name}</h4>
                                 <p>${timeStr} | ${recurrenceText}</p>
                             </div>
@@ -1092,11 +1041,11 @@
                                         <i class="fa-solid fa-paper-plane"></i> 立即推送
                                     </button>
                                 ` : ''}
-                                ${statusBadge}
                                 <button class="btn" style="padding: 8px 16px; font-size: 13px; background: linear-gradient(90deg, #ff6b6b, #ff8e53);" onclick="deleteTask('${task.id}', this)">
                                     <i class="fa-solid fa-trash"></i>
                                 </button>
                             </div>
+                            ${statusBadge}
                         </div>
                     `;
                 }).join('');
