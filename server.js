@@ -67,6 +67,25 @@ async function initDatabase() {
     await pool.query('ALTER TABLE flows ADD COLUMN positions VARCHAR(200) DEFAULT ""');
   }
 
+  // 创建 tasks 表
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id VARCHAR(36) PRIMARY KEY,
+      name VARCHAR(200) NOT NULL,
+      target_type ENUM('all', 'department', 'custom') DEFAULT 'all',
+      target_department VARCHAR(100),
+      target_users JSON,
+      schedule_time DATETIME NOT NULL,
+      recurrence ENUM('once', 'daily', 'weekly', 'monthly') DEFAULT 'once',
+      status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
+      result_json JSON,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      completed_at TIMESTAMP NULL,
+      INDEX idx_status (status),
+      INDEX idx_schedule_time (schedule_time)
+    )
+  `);
+
   console.log('✓ MySQL 数据库连接池已创建');
 }
 
@@ -183,6 +202,73 @@ async function saveFlowsToDB(flows) {
     console.error('保存流程失败:', err.message);
     return false;
   }
+}
+
+// ==================== 任务数据库操作 ====================
+
+async function getTasksFromDB() {
+  const [rows] = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
+  return rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    targetType: row.target_type,
+    targetDepartment: row.target_department,
+    targetUsers: row.target_users ? JSON.parse(row.target_users) : null,
+    scheduleTime: row.schedule_time,
+    recurrence: row.recurrence,
+    status: row.status,
+    result: row.result_json ? JSON.parse(row.result_json) : null,
+    createdAt: row.created_at,
+    completedAt: row.completed_at
+  }));
+}
+
+async function getPendingTasksFromDB() {
+  const [rows] = await pool.query(
+    'SELECT * FROM tasks WHERE status = ? ORDER BY schedule_time ASC',
+    ['pending']
+  );
+  return rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    targetType: row.target_type,
+    targetDepartment: row.target_department,
+    targetUsers: row.target_users ? JSON.parse(row.target_users) : null,
+    scheduleTime: row.schedule_time,
+    recurrence: row.recurrence,
+    status: row.status,
+    result: row.result_json ? JSON.parse(row.result_json) : null,
+    createdAt: row.created_at,
+    completedAt: row.completed_at
+  }));
+}
+
+async function saveTaskToDB(task) {
+  await pool.query(
+    `INSERT INTO tasks (id, name, target_type, target_department, target_users, schedule_time, recurrence, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      task.id,
+      task.name,
+      task.targetType,
+      task.targetDepartment,
+      task.targetUsers ? JSON.stringify(task.targetUsers) : null,
+      task.scheduleTime,
+      task.recurrence,
+      task.status
+    ]
+  );
+}
+
+async function updateTaskStatusInDB(taskId, status, result = null) {
+  await pool.query(
+    `UPDATE tasks SET status = ?, result_json = ?, completed_at = ? WHERE id = ?`,
+    [status, result ? JSON.stringify(result) : null, result ? new Date() : null, taskId]
+  );
+}
+
+async function deleteTaskFromDB(taskId) {
+  await pool.query('DELETE FROM tasks WHERE id = ?', [taskId]);
 }
 
 // 获取下一个流程ID
@@ -481,7 +567,7 @@ async function executePushTask(taskId) {
     return sendMessage(employee.email, 'email', 'interactive', card);
   });
 
-  Promise.all(sendPromises).then(results => {
+  Promise.all(sendPromises).then(async results => {
     const successCount = results.filter(r => r.success).length;
     console.log(`任务 ${task.name} 完成: 成功 ${successCount}/${results.length}`);
     
@@ -489,7 +575,10 @@ async function executePushTask(taskId) {
     task.completedAt = new Date();
     task.result = { success: successCount, total: results.length };
 
-    // 如果是周期性任务，创建下一次执行
+    // 更新数据库状态
+    await updateTaskStatusInDB(taskId, 'completed', task.result);
+
+    // 如果是周期性任务创建下一次执行
     if (task.recurrence !== 'once') {
       scheduleNextRecurrence(task);
     }
@@ -497,7 +586,7 @@ async function executePushTask(taskId) {
 }
 
 // 安排周期性任务的下一次执行
-function scheduleNextRecurrence(task) {
+async function scheduleNextRecurrence(task) {
   let nextDate;
   const now = new Date();
   
@@ -519,6 +608,7 @@ function scheduleNextRecurrence(task) {
       createdAt: new Date()
     };
     tasks.set(newTask.id, newTask);
+    await saveTaskToDB(newTask);
     
     schedule.scheduleJob(newTask.id, nextDate, () => {
       executePushTask(newTask.id);
@@ -771,10 +861,8 @@ app.delete('/api/employees/:id', async (req, res) => {
 });
 
 // 获取所有任务
-app.get('/api/tasks', (req, res) => {
-  const taskList = Array.from(tasks.values()).sort((a, b) => 
-    new Date(b.createdAt) - new Date(a.createdAt)
-  );
+app.get('/api/tasks', async (req, res) => {
+  const taskList = await getTasksFromDB();
   res.json({
     success: true,
     data: taskList
@@ -782,7 +870,7 @@ app.get('/api/tasks', (req, res) => {
 });
 
 // 创建定时任务
-app.post('/api/tasks', (req, res) => {
+app.post('/api/tasks', async (req, res) => {
   const { 
     name, 
     targetType, 
@@ -825,6 +913,7 @@ app.post('/api/tasks', (req, res) => {
   };
 
   tasks.set(taskId, task);
+  await saveTaskToDB(task);
 
   // 安排定时执行
   const now = new Date();
@@ -856,7 +945,7 @@ app.post('/api/tasks', (req, res) => {
 });
 
 // 删除任务
-app.delete('/api/tasks/:id', (req, res) => {
+app.delete('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
   
   if (!tasks.has(id)) {
@@ -873,6 +962,7 @@ app.delete('/api/tasks/:id', (req, res) => {
   }
 
   tasks.delete(id);
+  await deleteTaskFromDB(id);
 
   res.json({
     success: true,
@@ -1006,6 +1096,33 @@ async function startServer() {
   // 从数据库加载流程列表
   flowList = await loadFlowsFromDB();
   console.log(`✓ 已加载 ${flowList.length} 条流程记录`);
+  
+  // 恢复待执行的定时任务
+  async function restoreScheduledTasks() {
+    const pendingTasks = await getPendingTasksFromDB();
+    
+    for (const task of pendingTasks) {
+      const scheduleTime = new Date(task.scheduleTime);
+      const now = new Date();
+      
+      // 写入内存
+      tasks.set(task.id, task);
+      
+      if (scheduleTime > now) {
+        schedule.scheduleJob(task.id, scheduleTime, () => {
+          executePushTask(task.id);
+        });
+        console.log(`✓ 已恢复任务: ${task.name} (${scheduleTime.toLocaleString()})`);
+      } else {
+        console.log(`⚠ 任务已过期: ${task.name}，立即执行`);
+        executePushTask(task.id);
+      }
+    }
+    
+    console.log(`✓ 共恢复 ${pendingTasks.length} 个待执行任务`);
+  }
+  
+  await restoreScheduledTasks();
   
   app.listen(PORT, '127.0.0.1', () => {
     console.log('\n========================================');
