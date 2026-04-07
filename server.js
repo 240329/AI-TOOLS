@@ -799,6 +799,18 @@ app.post('/api/tasks', (req, res) => {
     });
   }
 
+  // 处理日期字符串：如果没有时区信息，视为本地时间
+  let scheduledDate;
+  if (typeof scheduleTime === 'string' && scheduleTime.includes('T') && !scheduleTime.includes('+') && !scheduleTime.endsWith('Z')) {
+    // 手动解析，保留本地时区
+    const [datePart, timePart] = scheduleTime.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute, second] = timePart.split(':').map(Number);
+    scheduledDate = new Date(year, month - 1, day, hour, minute, second);
+  } else {
+    scheduledDate = new Date(scheduleTime);
+  }
+
   const taskId = uuidv4();
   const task = {
     id: taskId,
@@ -806,7 +818,7 @@ app.post('/api/tasks', (req, res) => {
     targetType: targetType || 'all',
     targetDepartment,
     targetUsers,
-    scheduleTime: new Date(scheduleTime),
+    scheduleTime: scheduledDate.toISOString(),
     recurrence: recurrence || 'once',
     status: 'pending',
     createdAt: new Date()
@@ -815,8 +827,18 @@ app.post('/api/tasks', (req, res) => {
   tasks.set(taskId, task);
 
   // 安排定时执行
-  const scheduledDate = new Date(scheduleTime);
-  if (scheduledDate > new Date()) {
+  const now = new Date();
+  const scheduledTimestamp = scheduledDate.getTime();
+  const nowTimestamp = now.getTime();
+  console.log(`[DEBUG] 接收到的scheduleTime: ${scheduleTime}`);
+  console.log(`[DEBUG] 解析后的scheduledDate: ${scheduledDate.toISOString()}`);
+  console.log(`[DEBUG] scheduledDate本地时间: ${scheduledDate.toString()}`);
+  console.log(`[DEBUG] 当前时间: ${now.toString()}`);
+  console.log(`[DEBUG] scheduledTimestamp: ${scheduledTimestamp}`);
+  console.log(`[DEBUG] nowTimestamp: ${nowTimestamp}`);
+  console.log(`[DEBUG] scheduledTimestamp > nowTimestamp: ${scheduledTimestamp > nowTimestamp}`);
+  
+  if (scheduledTimestamp > nowTimestamp) {
     schedule.scheduleJob(taskId, scheduledDate, () => {
       executePushTask(taskId);
     });
