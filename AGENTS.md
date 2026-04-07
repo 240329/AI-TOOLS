@@ -1,160 +1,36 @@
 # AGENTS.md - AI Tools Repository
 
 ## Overview
-This repository contains the **FlowHub** system - a HR intelligent flow push platform for Dreame Technology.
-
-- **Core Function**: Employee onboarding flow management + Feishu (Lark) bot push notification
-- **Features**: Employee import, flow matching by position, scheduled push tasks
-- **Backend**: server.js (Express + MySQL + 飞书Bot定时推送), config.js (飞书应用配置)
-- **Frontend**: FlowHub.html (management dashboard), static portfolio pages
-- **Stack**: Node.js >= 16.0.0, Express, MySQL, node-schedule, @larksuiteoapi/node-sdk, multer, xlsx
-
-## Project Structure
-```
-├── index.html               # Main landing page
-├── FlowHub.html             # FlowHub portfolio site
-├── Resume AI.html           # AI resume template
-├── V-GEN STUDIO.html        # V-GEN STUDIO portfolio
-├── Visionary AI.html        # Visionary AI portfolio
-├── server.js                # Express server (飞书Bot定时推送)
-├── config.js                # Application configuration
-├── package.json             # Node.js dependencies
-├── *.backup                 # Backup files
-└── node_modules/            # Dependencies (do not commit)
-```
+- **Project**: FlowHub - HR onboarding flow + Feishu (Lark) bot push platform for Dreame Technology
+- **Stack**: Node.js >= 16.0.0, Express, MySQL, node-schedule, @larksuiteoapi/node-sdk
+- **Entry**: `server.js` (backend), HTML files (frontend)
 
 ## Commands
-
-### Running Locally
 ```bash
-# Static HTML - open in browser or use HTTP server
-python -m http.server 8000
-
-# Node.js server
-npm install
-npm start
+npm install   # Install dependencies
+npm start    # Run server on port 3000
 ```
 
-### Linting
-No JavaScript linting configured. For HTML validation:
-- Use W3C HTML Validator: https://validator.w3.org/
-- Browser DevTools show warnings in console
+## Architecture
+- **Backend**: Express server with Feishu bot API integration
+- **Frontend**: Static HTML files with inline CSS/JS
+- **Database**: MySQL database named `flowhub` must exist (credentials in config.js)
 
-### Testing
-No automated tests exist. Manual testing:
-1. Open each HTML file in browser
-2. Check console for JavaScript errors
-3. Verify all assets (images, fonts, CSS) load correctly
-4. Test responsive behavior across screen sizes
+## Testing
+No automated tests. Manual verification:
+1. Open HTML files in browser
+2. Check browser console for JS errors
+3. Verify assets load correctly
 
-### No Single Test Command
-This project has no test framework (no Jest, Vitest, etc.).
-
-## Code Style Guidelines
-
-### General
-- This is a **Node.js + Express backend** with **static HTML frontend**
-- Backend: server.js (Node.js/Express)
-- Frontend: HTML files with inline CSS/JS
-- No TypeScript or modern frameworks
-- Use npm for dependency management
-
-### HTML Conventions
-- Use semantic HTML5 elements (`<header>`, `<main>`, `<footer>`, `<nav>`, `<section>`)
-- Include `alt` attributes on all `<img>` elements
-- Use lowercase for tag names and attributes
-- Quote attribute values (e.g., `class="header"`, not `class=header`)
-- Close all tags properly
-- Use proper document structure: DOCTYPE, html, head, body
-- Include viewport meta tag for responsive design
-- Put CSS in `<style>` tags in `<head>`, JS in `<script>` tags before `</body>`
-
-### CSS Guidelines
-- Use CSS custom properties (variables) for colors and spacing
-- Prefer Flexbox and Grid for layout
-- Keep styles in `<style>` tags in `<head>` or external stylesheets
-- Use mobile-first responsive design with media queries
-- Avoid `!important` unless necessary
-- Use BEM-like naming for complex class names (e.g., `block__element--modifier`)
-- Group related styles together
-- Use shorthand properties where appropriate
-- Define colors in a consistent format (hex or rgb)
-
-### JavaScript Conventions
-- Use `const` and `let` instead of `var`
-- Use ES6+ syntax (arrow functions, template literals, destructuring)
-- Prefer `querySelector` over `getElementById`/`getElementsByClassName`
-- Handle errors with try-catch blocks
-- Use meaningful variable and function names (camelCase)
-- Avoid global variables, wrap in IIFE or use modules
-- Use strict equality (===) instead of (==)
-- Declare variables before using them
-- Prefer const for values that won't be reassigned
-
-### Naming Conventions
-- Files: kebab-case (e.g., `resume-ai.html`, `flow-hub.html`)
-- CSS classes: kebab-case (e.g., `.main-header`, `.nav-menu`)
-- JavaScript: camelCase (e.g., `initApp()`, `userName`)
-- HTML ids: kebab-case (e.g., `id="main-content"`)
-- Avoid abbreviated names unless widely understood
-
-### Import/Dependency Guidelines
-- Minimize external dependencies
-- Prefer CDN links for common libraries (Font Awesome, Google Fonts)
-- Only include libraries that are actually used
-- Keep jQuery or other large libraries out unless explicitly needed
-- Use defer/async attributes for external scripts
-
-### Formatting
+## Agent Notes
+- No linting/typechecking configured
+- **Do not commit config.js** - contains API credentials (appId, appSecret) and database password
 - Use 2 spaces for indentation
-- Keep lines under 120 characters when possible
-- Add whitespace around operators and after commas
-- Use blank lines to separate logical code blocks
-- Format HTML attributes on new lines for readability if many attributes exist
-
-### Error Handling
-- Wrap async code in try-catch
-- Log errors to console with meaningful messages
-- Provide fallback content for missing assets
-- Handle null/undefined values before accessing properties
-- Validate user input before processing
-
-### Accessibility
-- Use semantic HTML for screen reader support
-- Include proper heading hierarchy (h1 → h2 → h3)
-- Ensure sufficient color contrast
-- Make interactive elements keyboard accessible
-- Use ARIA labels when necessary
-
-### Performance
-- Optimize images before adding to project
-- Use appropriate image formats (WebP, SVG where suitable)
-- Minimize DOM depth
-- Avoid unnecessary reflows
-- Lazy load images if the page is image-heavy
-
-### Best Practices
-- Keep HTML, CSS, and JS separate when possible
-- Test in multiple browsers (Chrome, Firefox, Edge, Safari)
-- Use version control for all changes
-- Create backups before major edits
-- Validate HTML after making changes
-
-### Backup File Management
-- Maximum 5 backup versions per file (e.g., `file.html.backup`, `file.html.backup2`, etc.)
-- When exceeding 5 versions, delete the oldest backup file automatically
-- Backup files should follow the pattern: `filename.backup`, `filename.backup2`, etc.
+- Files: kebab-case (e.g., `FlowHub.html`), CSS classes: kebab-case, JS: camelCase
+- Backups follow pattern `*.backup` (max 5 versions)
 
 ## Git Workflow
-- Commit message format: `<type>: <description>`
-- Types: `feat`, `fix`, `update`, `docs`, `style`
-- Example: `feat: add new portfolio template`
-- Commit frequently with clear messages
-- Push changes to remote after commits
-
-## Notes for Agents
-- This is a Node.js + Express backend with static HTML frontend
-- Avoid adding Node.js dependencies unless explicitly requested
-- Ask user before adding new files or making significant changes
-- Do not commit secrets or API keys (config.js contains credentials)
-- Always verify changes work in browser before considering complete
+```
+<type>: <description>
+Types: feat, fix, update, docs, style
+```
