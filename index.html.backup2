@@ -954,104 +954,6 @@
                 bottom: 30px;
                 right: 30px;
             }
-            .search-container {
-                padding: 0 20px;
-            }
-            .search-box {
-                max-width: 100%;
-            }
-        }
-
-        /* ========== 搜索框 ========== */
-        .search-container {
-            width: 100%;
-            max-width: 100%;
-            margin: 0 auto 50px;
-            opacity: 0;
-            animation: fadeInDown 1s ease 0.3s forwards;
-            padding: 0 40px;
-        }
-
-        .search-box {
-            position: relative;
-            display: flex;
-            align-items: center;
-            max-width: 1300px;
-            margin: 0 auto;
-        }
-
-        .search-box i {
-            position: absolute;
-            left: 20px;
-            color: var(--text-muted);
-            font-size: 16px;
-            pointer-events: none;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 18px 50px 18px 52px;
-            background: rgba(10, 15, 25, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 18px;
-            color: var(--text-main);
-            font-size: 15px;
-            font-family: inherit;
-            backdrop-filter: blur(20px);
-            transition: all 0.3s ease;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--resume-primary);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 10px 40px rgba(0,0,0,0.3);
-        }
-
-        .search-input::placeholder {
-            color: var(--text-dim);
-        }
-
-        .search-clear {
-            position: absolute;
-            right: 16px;
-            width: 28px;
-            height: 28px;
-            border: none;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            color: var(--text-muted);
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-        }
-
-        .search-clear:hover {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-        }
-
-        .search-clear.visible {
-            display: flex;
-        }
-
-        /* 无结果提示 */
-        .no-results {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-muted);
-            display: none;
-        }
-
-        .no-results i {
-            font-size: 48px;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        .no-results p {
-            font-size: 16px;
         }
     </style>
 </head>
@@ -1088,17 +990,6 @@
             <h1 class="main-title">MI HUB<span>.</span></h1>
             <p class="subtitle">Next Generation AI Assistant Hub</p>
         </header>
-
-        <!-- 搜索框 -->
-        <div class="search-container">
-            <div class="search-box">
-                <i class="fa-solid fa-search"></i>
-                <input type="text" class="search-input" id="searchInput" placeholder="搜索工具名称或TAG...">
-                <button class="search-clear" id="searchClear" onclick="clearSearch()">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        </div>
 
         <!-- 工具卡片 -->
         <div class="tools-grid" id="toolsGrid">
@@ -1214,12 +1105,6 @@
                 </div>
             </a>
         </div>
-
-        <!-- 无结果提示 -->
-        <div class="no-results" id="noResults">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <p>未找到相关工具</p>
-        </div>
     </div>
 
     <!-- 新增工具按钮 -->
@@ -1274,56 +1159,6 @@
     </div>
 
     <script>
-        // ========== 搜索功能 ==========
-        const searchInput = document.getElementById('searchInput');
-        const searchClear = document.getElementById('searchClear');
-        const noResults = document.getElementById('noResults');
-
-        function performSearch() {
-            const searchText = searchInput.value.toLowerCase().trim();
-            const cards = document.querySelectorAll('.tool-card');
-            let visibleCount = 0;
-
-            cards.forEach(card => {
-                const title = card.querySelector('.card-title').textContent.toLowerCase();
-                const desc = card.querySelector('.card-desc').textContent.toLowerCase();
-                const tags = Array.from(card.querySelectorAll('.card-tag')).map(t => t.textContent.toLowerCase());
-
-                const nameMatch = title.includes(searchText);
-                const descMatch = desc.includes(searchText);
-                const tagMatch = tags.some(tag => tag.includes(searchText));
-
-                if (searchText === '' || nameMatch || descMatch || tagMatch) {
-                    card.style.display = '';
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
-            searchClear.classList.toggle('visible', searchText.length > 0);
-        }
-
-        function clearSearch() {
-            searchInput.value = '';
-            performSearch();
-            searchInput.focus();
-        }
-
-        searchInput.addEventListener('input', performSearch);
-
-        // ESC 清除搜索
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (searchInput.value) {
-                    clearSearch();
-                } else {
-                    closeModal();
-                }
-            }
-        });
-
         // ========== 粒子系统 ==========
         const canvas = document.getElementById('particles-canvas');
         const ctx = canvas.getContext('2d');
@@ -1463,6 +1298,11 @@
                 closeModal();
             }
         }
+
+        // ESC 关闭模态框
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
 
         // ========== 添加工具 ==========
         function handleAddTool(e) {

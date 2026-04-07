@@ -1,7 +1,7 @@
 module.exports = {
   // 飞书应用凭证 - 请在飞书开发者后台获取
-  appId: 'cli_a94e7a397a799cb5',      // 飞书应用 App ID
-  appSecret: '7BcGkhtso9wzBbWXi7gZ0cGnDFfhGlle', // 飞书应用 App Secret
+  appId: 'cli_a94e15520db71cd5',      // 飞书应用 App ID
+  appSecret: 'NUlaDSXUj5zlbHQmk0jIfR11shr8zdRu', // 飞书应用 App Secret
   
   // 服务配置
   port: 3000,

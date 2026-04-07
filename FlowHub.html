@@ -487,6 +487,26 @@
                     </div>
                 </div>
 
+		<!-- 新增：Openclaw 智能助手交互区 -->
+                <div class="glass-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3><i class="fa-solid fa-robot" style="color: #a855f7;"></i> Openclaw 智能助手</h3>
+                        <span class="badge" style="background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3);">AI 赋能</span>
+                    </div>
+                    <p style="color: var(--text-muted); margin: 0 0 15px;">输入你的需求，Openclaw 机器人将为你自动起草通知文案或协助处理任务。</p>
+                    
+                    <div style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
+                        <textarea id="openclaw-input" rows="3" placeholder="例如：帮我起草一份明天发给新员工的系统激活指南的欢迎辞，语气要轻松活泼一些..." style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; outline: none; box-sizing: border-box; resize: vertical; margin-bottom: 10px; font-family: inherit; font-size: 14px; transition: border-color 0.3s;"></textarea>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span id="openclaw-response" style="color: var(--text-muted); font-size: 13px; flex: 1; margin-right: 15px;">等待输入...</span>
+                            <button class="btn" id="openclaw-btn" onclick="askOpenclaw()" style="background: linear-gradient(90deg, #a855f7, #6366f1); padding: 8px 20px; font-size: 14px;">
+                                <i class="fa-solid fa-sparkles"></i> 发送给 Openclaw
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 新建推送计划 -->
                 <div class="glass-card">
                     <h3>新建推送计划</h3>
@@ -1164,6 +1184,55 @@
             setTimeout(() => {
                 btn.style.pointerEvents = 'auto';
             }, 2000);
+        }
+
+// ==================== Openclaw 对接逻辑 ====================
+        async function askOpenclaw() {
+            const inputEl = document.getElementById('openclaw-input');
+            const responseEl = document.getElementById('openclaw-response');
+            const btn = document.getElementById('openclaw-btn');
+            const text = inputEl.value.trim();
+
+            if (!text) {
+                inputEl.style.borderColor = '#ff6b6b';
+                setTimeout(() => inputEl.style.borderColor = 'var(--glass-border)', 2000);
+                return;
+            }
+
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 处理中...';
+            btn.style.pointerEvents = 'none';
+            
+            responseEl.textContent = '🧠 Openclaw 正在思考中，请稍候...';
+            responseEl.style.color = '#a855f7';
+
+            try {
+                // 调用后端的 Openclaw 转发接口
+                const res = await fetch(`${API_BASE}/openclaw/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: text })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    responseEl.innerHTML = '✨ <span style="color: #00e676;">Openclaw 已回复！</span> (回复内容已填充至上方)';
+                    // 将 AI 返回的文本替换到输入框，方便 HR 进一步修改或复制
+                    inputEl.value = data.data.reply;
+                    
+                    // 如果有需要，也可以自动把生成的文案填到推文计划的名字里
+                    // document.getElementById('task-name').value = "AI起草的推送任务"; 
+                } else {
+                    responseEl.textContent = '❌ 请求失败: ' + (data.error || '未知错误');
+                    responseEl.style.color = '#ff6b6b';
+                }
+            } catch (err) {
+                responseEl.textContent = '❌ 网络连接异常: ' + err.message;
+                responseEl.style.color = '#ff6b6b';
+            }
+
+            btn.innerHTML = originalBtnText;
+            btn.style.pointerEvents = 'auto';
         }
 
         // 页面加载时获取任务列表
