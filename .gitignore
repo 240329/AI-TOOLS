@@ -3,6 +3,7 @@ node_modules/
 npm-debug.log*
 
 # 备份文件
+*.backup*
 *.backup
 *.backup2
 
