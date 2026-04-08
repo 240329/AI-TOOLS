@@ -761,9 +761,16 @@
                     if (data.success && taskList.length > 0) {
                         const recentTasks = taskList.slice(0, 5);
                         listEl.innerHTML = recentTasks.map(task => {
-                            const statusBadge = task.status === 'completed' 
-                                ? '<span class="badge" style="color: #00e676; border-color: rgba(0, 230, 118, 0.3); background: rgba(0, 230, 118, 0.1);">已完成</span>'
-                                : '<span class="badge" style="color: #ff9100; border-color: rgba(255, 145, 0, 0.3); background: rgba(255, 145, 0, 0.1);">等待执行</span>';
+                            let statusBadge = '';
+                            if (task.status === 'pending') {
+                                statusBadge = `<span class="badge" style="color: #ff9100; border-color: rgba(255,145,0,0.3); background: rgba(255,145,0,0.1);">等待执行</span>`;
+                            } else if (task.status === 'completed') {
+                                const stats = task.result ? ` (${task.result.success}/${task.result.total})` : '';
+                                statusBadge = `<span class="badge" style="color: #00e676; border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1);">已完成${stats}</span>`;
+                            } else {
+                                const stats = task.result ? ` (0/${task.result.total})` : '';
+                                statusBadge = `<span class="badge" style="color: #ff5252; border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.1);">失败${stats}</span>`;
+                            }
                             const timeStr = task.schedule_time ? new Date(task.schedule_time).toLocaleString('zh-CN') : '待执行';
                             const recurrenceText = { 'once': '单次', 'daily': '每日', 'weekly': '每周', 'monthly': '每月' }[task.recurrence] || '单次';
                             return `
@@ -1051,9 +1058,7 @@
         document.getElementById('select-btn-flow').addEventListener('click', () => document.getElementById('file-input-flow').click());
         document.getElementById('file-input-flow').addEventListener('change', e => handleFlowFile(e.target.files[0]));
         document.getElementById('select-btn-employee').addEventListener('click', () => document.getElementById('file-input-employee').click());
-        document.getElementById('file-input-employee').addEventListener('change', e => handleEmployeeFile(e.target.files[0]));
-
-        [flowUploadArea, employeeUploadArea].forEach(area => {
+        document.getElementById('file-input-employee').addEventListener('change', e => handleEmployeeFile(e.target.files[0]));[flowUploadArea, employeeUploadArea].forEach(area => {
             area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
             area.addEventListener('dragleave', () => area.classList.remove('dragover'));
             area.addEventListener('drop', e => {
@@ -1160,11 +1165,17 @@
                 }
 
                 listEl.innerHTML = data.data.list.map(task => {
-                    const statusBadge = task.status === 'pending' 
-                        ? `<span class="badge" style="color: #ff9100; border-color: rgba(255,145,0,0.3); background: rgba(255,145,0,0.1);">等待执行</span>`
-                        : task.status === 'completed'
-                        ? `<span class="badge" style="color: #00e676; border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1);">已完成</span>`
-                        : `<span class="badge" style="color: #ff5252; border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.1);">失败</span>`;
+                    let statusBadge = '';
+                    if (task.status === 'pending') {
+                        statusBadge = `<span class="badge" style="color: #ff9100; border-color: rgba(255,145,0,0.3); background: rgba(255,145,0,0.1);">等待执行</span>`;
+                    } else if (task.status === 'completed') {
+                        const stats = task.result ? ` (${task.result.success}/${task.result.total})` : '';
+                        statusBadge = `<span class="badge" style="color: #00e676; border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1);">已完成${stats}</span>`;
+                    } else {
+                        const stats = task.result ? ` (${task.result.success || 0}/${task.result.total || 0})` : '';
+                        statusBadge = `<span class="badge" style="color: #ff5252; border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.1);">失败${stats}</span>`;
+                    }
+
                     const timeStr = new Date(task.schedule_time).toLocaleString('zh-CN');
                     return `
                         <div class="list-item" style="display: flex; align-items: center; flex-wrap: wrap;">
@@ -1219,9 +1230,22 @@
         async function triggerTask(id, btn) {
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             try {
+                // 等待后端与飞书交互完毕
                 const res = await fetch(`${API_BASE}/tasks/${id}/trigger`, { method: 'POST' });
-                if ((await res.json()).success) setTimeout(() => loadTaskList(currentPage), 1000); else alert('发送失败');
-            } catch (err) { alert('请求失败'); btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>'; }
+                const data = await res.json();
+                
+                if (data.success) {
+                    // 完成后立即重载最新数据
+                    loadTaskList(currentPage);
+                    loadDashboardStats();
+                } else {
+                    alert('发送失败: ' + (data.error || '未知错误'));
+                    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
+                }
+            } catch (err) { 
+                alert('网络请求失败'); 
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>'; 
+            }
         }
 
         async function askOpenclaw() {
@@ -1251,6 +1275,18 @@
 
         // 页面加载时获取任务列表
         loadTaskList();
+
+        // ==================== 数据自动轮询保鲜 ====================
+        // 每 15 秒钟自动刷新一次当前激活页面上的任务列表与统计
+        setInterval(() => {
+            if (document.getElementById('push-tasks').classList.contains('active')) {
+                loadTaskList(currentPage, currentPageSize);
+            }
+            if (document.getElementById('dashboard').classList.contains('active')) {
+                loadDashboardStats();
+                loadRecentTasks();
+            }
+        }, 15000);
 
     </script>
 </body>

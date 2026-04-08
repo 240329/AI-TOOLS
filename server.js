@@ -108,12 +108,6 @@ let feishuStatus = {
 // 定时任务存储
 const tasks = new Map();
 
-// 飞书用户缓存（企业员工）- 已废弃，使用 employeesDB
-// let employeeList = [
-//   { userId: 'fgg6a31f', name: '孙伟杰', department: '信息技术部', position: 'SAP开发' },
-//   { userId: '1abccba', name: '陈庆媛', department: '信息技术部', position: 'OA' },
-// ];
-
 // ==================== MySQL 数据库操作 ====================
 
 // 从数据库获取所有员工
@@ -123,14 +117,14 @@ async function getEmployeesFromDB() {
     return rows;
   } catch (err) {
     console.error('获取员工失败:', err.message);
-    return [];
+    return[];
   }
 }
 
 // 从数据库获取单个员工
 async function getEmployeeById(id) {
   try {
-    const [rows] = await pool.query('SELECT * FROM employees WHERE id = ?', [id]);
+    const[rows] = await pool.query('SELECT * FROM employees WHERE id = ?', [id]);
     return rows[0] || null;
   } catch (err) {
     console.error('获取员工失败:', err.message);
@@ -145,7 +139,7 @@ async function saveEmployeesToDB(employees) {
   console.log('DEBUG saveEmployeesToDB called with:', JSON.stringify(employees, null, 2));
   
   const placeholders = employees.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
-  const values = employees.flatMap(emp => [
+  const values = employees.flatMap(emp =>[
     emp.id, emp.name, emp.email, emp.hireDate, emp.department, emp.position
   ]);
   
@@ -181,7 +175,7 @@ async function getFlowsFromDB() {
     return rows;
   } catch (err) {
     console.error('获取流程失败:', err.message);
-    return [];
+    return[];
   }
 }
 
@@ -190,7 +184,7 @@ async function saveFlowsToDB(flows) {
   if (flows.length === 0) return;
   
   const placeholders = flows.map(() => '(?, ?, ?, ?)').join(', ');
-  const values = flows.flatMap(flow => [
+  const values = flows.flatMap(flow =>[
     flow.id, flow.name, flow.positions || '', flow.url
   ]);
   
@@ -223,7 +217,7 @@ async function getNextFlowId() {
 // ==================== 流程匹配逻辑 (基于数据库) ====================
 
 async function matchFlowsByPosition(position) {
-  if (!position) return [];
+  if (!position) return[];
   
   const flows = await getFlowsFromDB();
   const posLower = position.toLowerCase();
@@ -249,8 +243,7 @@ async function saveTaskToDB(task) {
     await pool.query(
       `INSERT INTO scheduled_tasks (id, name, target_type, target_department, target_users, schedule_time, recurrence, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), schedule_time=VALUES(schedule_time)`,
-      [task.id, task.name, task.targetType || 'all', task.targetDepartment || null,
+       ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), schedule_time=VALUES(schedule_time)`,[task.id, task.name, task.targetType || 'all', task.targetDepartment || null,
        JSON.stringify(task.targetUsers || []), task.scheduleTime, task.recurrence || 'once', task.status || 'pending']
     );
     return true;
@@ -288,7 +281,7 @@ async function deleteTaskFromDB(taskId) {
 // 从数据库加载任务（启动时恢复）
 async function loadTasksFromDB() {
   try {
-    const [rows] = await pool.query("SELECT * FROM scheduled_tasks WHERE status = 'pending'");
+    const[rows] = await pool.query("SELECT * FROM scheduled_tasks WHERE status = 'pending'");
     
     // 安全解析 JSON 的辅助函数
     const safeJsonParse = (str, defaultVal) => {
@@ -305,7 +298,7 @@ async function loadTasksFromDB() {
         name: task.name,
         targetType: task.target_type,
         targetDepartment: task.target_department,
-        targetUsers: safeJsonParse(task.target_users, []),
+        targetUsers: safeJsonParse(task.target_users,[]),
         scheduleTime: task.schedule_time,
         recurrence: task.recurrence,
         status: task.status,
@@ -337,7 +330,7 @@ async function loadTasksFromDB() {
 async function cleanupOldTasks() {
   try {
     const [result] = await pool.query(
-      `DELETE FROM scheduled_tasks WHERE status = 'completed' AND completed_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`
+      `DELETE FROM scheduled_tasks WHERE status IN ('completed', 'failed') AND completed_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`
     );
     if (result.affectedRows > 0) {
       console.log(`✓ 已清理 ${result.affectedRows} 条历史任务记录`);
@@ -379,7 +372,7 @@ const upload = multer({
 });
 
 // 流程列表 - 从数据库加载
-let flowList = [];
+let flowList =[];
 
 async function loadFlowsFromDB() {
   return await getFlowsFromDB();
@@ -391,21 +384,6 @@ let wsClient = null;
 
 async function initFeishuConnection() {
   try {
-    // // 尝试通过发送消息测试凭证是否有效
-    // const result = await client.im.message.create({
-    //   params: { receive_id_type: 'email' },
-    //   data: {
-    //     receive_id: 'sunweijie.wx@dreame.tech',
-    //     msg_type: 'text',
-    //     content: JSON.stringify({ text: 'connection test' })
-    //   }
-    // });
-    
-    // console.log('✓ 飞书应用连接已建立');
-    // feishuStatus.connected = true;
-    // feishuStatus.lastConnected = new Date();
-    // feishuStatus.reconnectAttempts = 0;
-    
     // 直接标记为已连接（跳过实际测试）
     console.log('✓ 飞书应用连接已初始化');
     feishuStatus.connected = true;
@@ -462,49 +440,10 @@ async function sendMessage(receiveId, receiveIdType, msgType, content) {
   }
 }
 
-// ==================== 用户查找（已废弃，改用邮箱发送） ====================
-// async function findUserOpenId(email, name) {
-//   // 优先通过邮箱查找
-//   if (email) {
-//     console.log(`尝试通过邮箱查找用户: ${email}`);
-//     try {
-//       const result = await client.contact.user.batchGetId({
-//         data: { emails: [email] },
-//         params: { user_id_type: 'email' }
-//       });
-//       console.log('batchGetId 结果:', JSON.stringify(result.data));
-//       if (result.data?.users?.length > 0) {
-//         console.log(`✓ 通过邮箱找到用户: ${email} -> ${result.data.users[0].open_id}`);
-//         return result.data.users[0].open_id;
-//       }
-//     } catch (err) {
-//       console.log('邮箱查找失败:', err.message);
-//     }
-//   }
-  
-//   // 邮箱未找到，通过名字搜索
-//   if (name) {
-//     try {
-//       const result = await client.contact.user.list({
-//         params: { department_id: '0', page_size: 100 }
-//       });
-//       const user = result.data.items?.find(u => u.name === name);
-//       if (user) {
-//         console.log(`✓ 通过名字找到用户: ${name} -> ${user.open_id}`);
-//         return user.open_id;
-//       }
-//     } catch (err) {
-//       console.log('名字查找失败:', err.message);
-//     }
-//   }
-  
-//   return null;
-// }
-
 // 构建流程推送卡片消息
 function buildFlowNotificationCard(employee, flows) {
   const flowItems = flows.map(f => 
-    `• [${f.name}](${f.url})\n  适配岗位: ${f.positions || '通用'}`
+    `•[${f.name}](${f.url})\n  适配岗位: ${f.positions || '通用'}`
   ).join('\n\n');
 
   return {
@@ -515,7 +454,7 @@ function buildFlowNotificationCard(employee, flows) {
       },
       template: 'blue'
     },
-    elements: [
+    elements:[
       {
         tag: 'div',
         text: {
@@ -532,7 +471,7 @@ function buildFlowNotificationCard(employee, flows) {
       },
       {
         tag: 'action',
-        actions: [
+        actions:[
           {
             tag: 'button',
             text: {
@@ -559,9 +498,9 @@ function buildFlowNotificationCard(employee, flows) {
 
 async function executePushTask(taskId) {
   const task = tasks.get(taskId);
-  if (!task || task.status === 'completed') {
-    console.log(`任务 ${taskId} 不存在或已完成`);
-    return;
+  if (!task || task.status === 'completed' || task.status === 'failed') {
+    console.log(`任务 ${taskId} 不存在或已结束`);
+    return null;
   }
 
   console.log(`执行推送任务: ${task.name}`);
@@ -570,7 +509,7 @@ async function executePushTask(taskId) {
   const employees = await getEmployeesFromDB();
   
   // 获取要发送的员工列表
-  let targetEmployees = [];
+  let targetEmployees =[];
   if (task.targetType === 'all') {
     targetEmployees = employees;
   } else if (task.targetType === 'department' && task.targetDepartment) {
@@ -581,8 +520,11 @@ async function executePushTask(taskId) {
 
   if (targetEmployees.length === 0) {
     console.log('没有目标员工，跳过发送');
-    await updateTaskStatus(taskId, 'completed', { success: 0, total: 0, details: [] }, '没有目标员工');
-    return;
+    task.status = 'failed';
+    task.completedAt = new Date();
+    task.result = { success: 0, total: 0, details:[] };
+    await updateTaskStatus(taskId, 'failed', task.result, '没有目标员工');
+    return task.result;
   }
 
   // 异步发送消息 - 每个员工使用自己的匹配流程
@@ -598,6 +540,7 @@ async function executePushTask(taskId) {
     }
     
     const card = buildFlowNotificationCard({ name: employee.name }, employeeFlows);
+    // 这里会等待飞书的HTTP响应返回
     const result = await sendMessage(employee.email, 'email', 'interactive', card);
     
     return {
@@ -610,26 +553,28 @@ async function executePushTask(taskId) {
     };
   });
 
-  Promise.all(sendPromises).then(async (results) => {
-    const successCount = results.filter(r => r.success).length;
-    console.log(`任务 ${task.name} 完成: 成功 ${successCount}/${results.length}`);
-    
-    task.status = 'completed';
-    task.completedAt = new Date();
-    task.result = { success: successCount, total: results.length, details: results };
+  // 等待所有的飞书消息发送完成并获取结果
+  const results = await Promise.all(sendPromises);
+  const successCount = results.filter(r => r.success).length;
+  
+  // 根据结果判定最终状态 (哪怕只有1个成功都算部分 completed，全失败则 failed)
+  const finalStatus = successCount > 0 ? 'completed' : 'failed';
+  
+  console.log(`任务 ${task.name} 执行结束: 状态 [${finalStatus}], 成功 ${successCount}/${results.length}`);
+  
+  task.status = finalStatus;
+  task.completedAt = new Date();
+  task.result = { success: successCount, total: results.length, details: results };
 
-    // 更新数据库状态
-    await updateTaskStatus(taskId, 'completed', {
-      success: successCount,
-      total: results.length,
-      details: results
-    });
+  // 更新数据库状态
+  await updateTaskStatus(taskId, finalStatus, task.result);
 
-    // 如果是周期性任务，创建下一次执行
-    if (task.recurrence !== 'once') {
-      scheduleNextRecurrence(task);
-    }
-  });
+  // 如果是周期性任务，创建下一次执行
+  if (task.recurrence !== 'once') {
+    await scheduleNextRecurrence(task);
+  }
+  
+  return task.result;
 }
 
 // 安排周期性任务的下一次执行
@@ -752,8 +697,7 @@ app.post('/api/employees/upload', upload.single('file'), async (req, res) => {
     }
 
     // 解析表头和数据
-    // 第1列：姓名，第2列：邮箱，第3列：入职日期，第4列：部门，第5列：岗位
-    const newEmployees = [];
+    const newEmployees =[];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (!row[0]) continue; // 跳过空行
@@ -761,7 +705,6 @@ app.post('/api/employees/upload', upload.single('file'), async (req, res) => {
       const name = String(row[0] || '').trim();
       const email = String(row[1] || '').trim();
       let hireDate = String(row[2] || '').trim();
-      // 处理Excel日期序列号（如45384.333333333336）
       if (!isNaN(hireDate) && hireDate.includes('.')) {
         const excelEpoch = new Date(1899, 11, 30);
         const days = parseFloat(hireDate);
@@ -877,9 +820,7 @@ app.post('/api/flows/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ success: false, error: '文件内容为空或格式不正确' });
     }
 
-    // 解析表头和数据
-    // 第1列：名称，第2列：适配岗位(逗号分隔)，第3列：链接URL
-    const newFlows = [];
+    const newFlows =[];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (!row[0]) continue;
@@ -899,13 +840,8 @@ app.post('/api/flows/upload', upload.single('file'), async (req, res) => {
       }
     }
 
-    // 保存到数据库
     await saveFlowsToDB(newFlows);
-    
-    // 删除上传的文件
     fs.unlinkSync(req.file.path);
-
-    // 获取总数
     const flows = await getFlowsFromDB();
 
     res.json({
@@ -929,18 +865,6 @@ app.delete('/api/flows/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM flows WHERE id = ?', [id]);
     res.json({ success: true, message: '流程已删除' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// 删除员工
-app.delete('/api/employees/:id', async (req, res) => {
-  const { id } = req.params;
-  
-  try {
-    await pool.query('DELETE FROM employees WHERE id = ?', [id]);
-    res.json({ success: true, message: '员工已删除' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -973,7 +897,7 @@ app.get('/api/tasks', async (req, res) => {
       data: {
         list: rows.map(row => ({
           ...row,
-          target_users: safeJsonParse(row.target_users, []),
+          target_users: safeJsonParse(row.target_users,[]),
           result: safeJsonParse(row.result, null)
         })),
         pagination: {
@@ -1083,7 +1007,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
 });
 
 // 手动触发任务
-app.post('/api/tasks/:id/trigger', (req, res) => {
+app.post('/api/tasks/:id/trigger', async (req, res) => {
   const { id } = req.params;
   const task = tasks.get(id);
 
@@ -1094,48 +1018,15 @@ app.post('/api/tasks/:id/trigger', (req, res) => {
     });
   }
 
-  // 立即执行任务
-  executePushTask(id);
+  // 同步等待任务完整执行（包含等待飞书SDK的回执）
+  const result = await executePushTask(id);
 
   res.json({
     success: true,
-    message: '任务已开始执行'
+    message: '任务已执行完毕',
+    data: result
   });
 });
-
-// ==================== 测试消息接口（已废弃） ====================
-// app.post('/api/send-test', async (req, res) => {
-//   const { userId, message } = req.body;
-//   
-//   if (!userId) {
-//     return res.status(400).json({
-//       success: false,
-//       error: '缺少用户ID'
-//     });
-//   }
-// 
-//   const testCard = {
-//     header: {
-//       title: {
-//         tag: 'plain_text',
-//         content: '🧪 测试消息'
-//       },
-//       template: 'green'
-//     },
-//     elements: [
-//       {
-//         tag: 'div',
-//         text: {
-//           tag: 'lark_md',
-//           content: message || '这是一条测试消息，来自FlowHub系统'
-//         }
-//       }
-//     ]
-//   };
-// 
-//   const result = await sendMessage(userId, 'user_id', 'interactive', testCard);
-//   res.json(result);
-// });
 
 // ==================== Openclaw 机器人交互接口 ====================
 app.post('/api/openclaw/chat', async (req, res) => {
@@ -1148,39 +1039,9 @@ app.post('/api/openclaw/chat', async (req, res) => {
   try {
     console.log(`[Openclaw] 收到前端请求，准备对接 Openclaw: ${prompt}`);
 
-    /**
-     * 【对接策略选择】
-     * 策略 A: 如果 Openclaw 是飞书上的另一个应用机器人，且你拥有它的 app_id 或 open_id
-     * 你可以让当前应用（FlowHub）直接发飞书消息给它。
-     */
-    // const OPENCLAW_BOT_ID = 'cli_xxx_openclaw_id_xxx';
-    // await sendMessage(OPENCLAW_BOT_ID, 'app_id', 'text', { text: prompt });
-    // 注意：如果是发给另一个机器人，飞书 SDK 获取其回调回复会比较复杂，通常需要配置事件订阅。
-
-    /**
-     * 策略 B: 如果 Openclaw 本身提供了独立的 HTTP API 服务（这是最常见的 LLM 对接方式）
-     * 我们可以直接使用 fetch/axios 调用它的服务端接口。
-     */
-    /*
-    const aiResponse = await fetch('https://api.openclaw.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer YOUR_OPENCLAW_API_KEY'
-      },
-      body: JSON.stringify({
-        messages:[{ role: 'user', content: prompt }]
-      })
-    });
-    const aiData = await aiResponse.json();
-    const replyText = aiData.choices[0].message.content;
-    */
-
-    // ----- 这里我们使用模拟返回演示联调过程 -----
     // 模拟等待 1.5 秒的大模型思考时间
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // 模拟 Openclaw 的回复文案
     const mockReply = `嗨，我是 Openclaw！基于你的需求，我帮你起草了以下内容：\n\n【标题】欢迎加入！请查收您的系统激活指南 🎉\n\n【正文】\n你好！非常高兴你加入我们的团队。为了让你在入职第一天能顺畅地开始工作，我们准备了......\n\n（你的原始诉求：${prompt}）`;
 
     res.json({
