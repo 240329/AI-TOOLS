@@ -160,7 +160,7 @@
 
         .header {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
             margin-bottom: 40px;
         }
@@ -168,24 +168,6 @@
         .header h1 {
             font-size: 28px;
             font-weight: 600;
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
         }
 
         /* 卡片面板通用样式 */
@@ -203,6 +185,57 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             background: rgba(255, 255, 255, 0.06);
         }
+
+        /* =========== 搜索框样式 =========== */
+        .card-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-header-flex h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .search-box {
+            position: relative;
+            width: 280px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .search-box input::placeholder { color: var(--text-muted); }
+        
+        .search-box input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(45, 212, 191, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            transition: color 0.3s ease;
+        }
+
+        .search-box input:focus + i { color: var(--primary-color); }
+        /* ======================================== */
 
         /* 上传拖拽区域 */
         .upload-area {
@@ -256,6 +289,64 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 242, 254, 0.5);
             filter: brightness(1.1);
+        }
+
+        /* 自定义确认弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            width: 400px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0) scale(1);
+        }
+
+        .btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+            color: var(--text-muted);
+        }
+
+        .btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            box-shadow: none;
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: linear-gradient(90deg, #ff5252, #ff1744);
+            box-shadow: 0 5px 15px rgba(255, 82, 82, 0.3);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 8px 25px rgba(255, 82, 82, 0.5);
         }
 
         /* 列表/表格样式 */
@@ -321,7 +412,6 @@
 
         .stat-value { font-size: 36px; font-weight: bold; margin-top: 10px; color: var(--primary-color); }
 
-        /* 自定义滚动条 */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
@@ -369,10 +459,6 @@
             
             <header class="header">
                 <h1 id="page-title">控制台概览</h1>
-                <div class="user-profile">
-                    <span>HR - 李主管</span>
-                    <div class="avatar">李</div>
-                </div>
             </header>
 
             <!-- 视图 1：控制台 -->
@@ -380,34 +466,26 @@
                 <div class="stats-grid">
                     <div class="stat-card glass-card">
                         <p class="text-muted">已入库流程</p>
-                        <div class="stat-value">128</div>
+                        <div class="stat-value" id="stat-flow-count">--</div>
                     </div>
                     <div class="stat-card glass-card">
-                        <p class="text-muted">本月待入职员工</p>
-                        <div class="stat-value">45</div>
+                        <p class="text-muted">已入库员工</p>
+                        <div class="stat-value" id="stat-employee-count">--</div>
                     </div>
                     <div class="stat-card glass-card">
-                        <p class="text-muted">自动推送任务</p>
-                        <div class="stat-value">12</div>
+                        <p class="text-muted">推送任务</p>
+                        <div class="stat-value" id="stat-task-count">--</div>
                     </div>
                 </div>
                 
                 <div class="glass-card">
                     <h3>最近执行的任务</h3>
-                    <div class="data-list">
+                    <div class="data-list" id="recent-tasks">
                         <div class="list-item">
                             <div class="item-info">
-                                <h4>推送：IT设备申请及领用流程</h4>
-                                <p>执行时间：今天 09:00 | 目标人数：15人</p>
+                                <h4>加载中...</h4>
+                                <p>正在获取任务数据</p>
                             </div>
-                            <span class="badge" style="color: #00e676; border-color: rgba(0, 230, 118, 0.3); background: rgba(0, 230, 118, 0.1);">已完成</span>
-                        </div>
-                        <div class="list-item">
-                            <div class="item-info">
-                                <h4>推送：企业文化培训指南</h4>
-                                <p>执行时间：明天 10:00 | 目标人数：45人</p>
-                            </div>
-                            <span class="badge" style="color: #ff9100; border-color: rgba(255, 145, 0, 0.3); background: rgba(255, 145, 0, 0.1);">等待执行</span>
                         </div>
                     </div>
                 </div>
@@ -429,7 +507,13 @@
                 </div>
 
                 <div class="glass-card">
-                    <h3>当前系统流程清单 (节选)</h3>
+                    <div class="card-header-flex">
+                        <h3>系统流程清单</h3>
+                        <div class="search-box">
+                            <input type="text" id="search-flow-input" placeholder="搜索流程名称或适配岗位...">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
+                    </div>
                     <div class="data-list" id="flow-list">
                         <div class="list-item">
                             <div class="item-info">
@@ -457,7 +541,13 @@
                 </div>
                 
                 <div class="glass-card">
-                    <h3>待入职队列</h3>
+                    <div class="card-header-flex">
+                        <h3>待入职队列</h3>
+                        <div class="search-box">
+                            <input type="text" id="search-employee-input" placeholder="搜索姓名、部门或岗位...">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
+                    </div>
                     <div class="data-list" id="employee-list">
                         <div class="list-item">
                             <div class="item-info">
@@ -487,7 +577,7 @@
                     </div>
                 </div>
 
-		<!-- 新增：Openclaw 智能助手交互区 -->
+		<!-- Openclaw 智能助手交互区 -->
                 <div class="glass-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3><i class="fa-solid fa-robot" style="color: #a855f7;"></i> Openclaw 智能助手</h3>
@@ -529,10 +619,7 @@
                             <div style="flex: 1; display: none;" id="department-select-container">
                                 <label style="display: block; margin-bottom: 8px; color: var(--text-muted);">选择部门</label>
                                 <select id="task-department" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; outline: none;">
-                                    <option value="研发部" style="color: black;">研发部</option>
-                                    <option value="财务部" style="color: black;">财务部</option>
-                                    <option value="行政部" style="color: black;">行政部</option>
-                                    <option value="市场部" style="color: black;">市场部</option>
+                                    <option value="" style="color: black;">加载中...</option>
                                 </select>
                             </div>
                         </div>
@@ -570,307 +657,133 @@
                             </div>
                         </div>
                     </div>
+                    <!-- 分页控件 -->
+                    <div id="task-pagination" style="display: flex; justify-content: center; align-items: center; margin-top: 20px; gap: 10px;">
+                    </div>
                 </div>
             </section>
             
         </main>
     </div>
 
+    <!-- 自定义确认弹窗 -->
+    <div class="modal-overlay" id="custom-confirm-modal">
+        <div class="modal-content">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                <div style="background: rgba(255, 107, 107, 0.2); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: #ff6b6b; font-size: 20px;"></i>
+                </div>
+                <h3 id="modal-title" style="margin: 0; font-size: 20px;">确认删除</h3>
+            </div>
+            <div style="margin-bottom: 30px;">
+                <p id="modal-message" style="color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 0;">确定要执行此操作吗？此操作无法恢复。</p>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 15px;">
+                <button class="btn btn-cancel" id="modal-cancel-btn">取消</button>
+                <button class="btn btn-danger" id="modal-confirm-btn">确认删除</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // 侧边栏导航切换逻辑
+        const API_BASE = 'http://localhost:3000/api';
+
+        // 🟢 工具函数：防抖，防止高频输入卡死
+        function debounce(fn, delay) {
+            let timer = null;
+            return function (...args) {
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
+                    fn.apply(this, args);
+                }, delay);
+            }
+        }
+
+        // 🟢 工具函数：展示统一确认弹窗
+        function showConfirmModal(title = '确认删除', msg = '确定要执行此操作吗？此操作无法恢复。') {
+            return new Promise(resolve => {
+                document.getElementById('modal-title').innerText = title;
+                document.getElementById('modal-message').innerText = msg;
+
+                const modal = document.getElementById('custom-confirm-modal');
+                const cancel = document.getElementById('modal-cancel-btn');
+                const confirm = document.getElementById('modal-confirm-btn');
+                
+                modal.classList.add('active');
+                
+                const cleanup = () => { 
+                    modal.classList.remove('active'); 
+                    cancel.removeEventListener('click', onCancel); 
+                    confirm.removeEventListener('click', onConfirm); 
+                };
+                const onCancel = () => { cleanup(); resolve(false); };
+                const onConfirm = () => { cleanup(); resolve(true); };
+                
+                cancel.addEventListener('click', onCancel); 
+                confirm.addEventListener('click', onConfirm);
+            });
+        }
+
+        // ==================== 页面导航与基础逻辑 ====================
         const navItems = document.querySelectorAll('.nav-item');
         const viewSections = document.querySelectorAll('.view-section');
         const pageTitle = document.getElementById('page-title');
 
         navItems.forEach(item => {
             item.addEventListener('click', () => {
-                // 移除所有 active 类
                 navItems.forEach(n => n.classList.remove('active'));
                 viewSections.forEach(v => v.classList.remove('active'));
-
-                // 为当前点击项添加 active
                 item.classList.add('active');
-                
-                // 更改标题
                 pageTitle.textContent = item.textContent.trim();
-
-                // 显示对应的视图面板
                 const targetId = item.getAttribute('data-target');
                 document.getElementById(targetId).classList.add('active');
             });
         });
 
-        // 流程知识库 - 文件上传功能
-        const flowUploadArea = document.getElementById('drop-zone-flow');
-        const fileInputFlow = document.getElementById('file-input-flow');
-        const selectBtnFlow = document.getElementById('select-btn-flow');
-        const uploadTitleFlow = document.getElementById('upload-title-flow');
-        const uploadSubtitleFlow = document.getElementById('upload-subtitle-flow');
-        const fileNameFlow = document.getElementById('file-name-flow');
-
-        selectBtnFlow.addEventListener('click', () => {
-            fileInputFlow.click();
-        });
-
-        fileInputFlow.addEventListener('change', (e) => {
-            handleFlowFile(e.target.files[0]);
-        });
-
-        flowUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            flowUploadArea.classList.add('dragover');
-        });
-
-        flowUploadArea.addEventListener('dragleave', () => {
-            flowUploadArea.classList.remove('dragover');
-        });
-
-        flowUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            flowUploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                handleFlowFile(file);
-            }
-        });
-
-        function handleFlowFile(file) {
-            if (!file) return;
-
-            const validExtensions = ['.xlsx', '.xls', '.csv'];
-            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
-            if (!validExtensions.includes(fileExtension)) {
-                showUploadError('仅支持 .xlsx, .xls, .csv 格式文件');
-                return;
-            }
-
-            if (file.size > 50 * 1024 * 1024) {
-                showUploadError('文件大小超过 50MB 限制');
-                return;
-            }
-
-            const icon = flowUploadArea.querySelector('i');
-            const btn = selectBtnFlow;
-            const originalBtnText = btn.innerHTML;
-
-            icon.className = 'fa-solid fa-spinner fa-spin';
-            icon.style.color = 'var(--primary-color)';
-            uploadTitleFlow.textContent = '正在上传文件...';
-            uploadSubtitleFlow.style.display = 'none';
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 上传中...';
-            btn.style.pointerEvents = 'none';
-            fileNameFlow.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
-            fileNameFlow.style.display = 'block';
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            fetch(`${API_BASE}/flows/upload`, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    icon.className = 'fa-solid fa-circle-check';
-                    icon.style.color = '#00e676';
-                    uploadTitleFlow.textContent = data.message || '流程清单导入成功！';
-                    btn.innerHTML = '<i class="fa-solid fa-check"></i> 导入成功';
-                    btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
-                    loadFlowList();
-                } else {
-                    throw new Error(data.error || '上传失败');
-                }
-            })
-            .catch(err => {
-                showUploadError('上传失败: ' + err.message);
-            })
-            .finally(() => {
-                setTimeout(() => {
-                    icon.className = 'fa-solid fa-cloud-arrow-up';
-                    icon.style.color = 'var(--primary-color)';
-                    uploadTitleFlow.textContent = '点击或将文件拖拽到此处';
-                    uploadSubtitleFlow.style.display = 'block';
-                    btn.innerHTML = originalBtnText;
-                    btn.style.background = '';
-                    btn.style.pointerEvents = 'auto';
-                    fileNameFlow.style.display = 'none';
-                    fileInputFlow.value = '';
-                }, 3000);
-            });
+        function loadDashboardStats() {
+            fetch(`${API_BASE}/dashboard/stats`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('stat-flow-count').textContent = data.data.flowCount || 0;
+                        document.getElementById('stat-employee-count').textContent = data.data.employeeCount || 0;
+                        document.getElementById('stat-task-count').textContent = data.data.taskCount || 0;
+                    }
+                }).catch(err => console.error('加载统计数据失败:', err));
         }
 
-        function showUploadError(message) {
-            const icon = flowUploadArea.querySelector('i');
-            const originalTitle = uploadTitleFlow.textContent;
-            icon.className = 'fa-solid fa-circle-exclamation';
-            icon.style.color = '#ff5252';
-            uploadTitleFlow.textContent = message;
-
-            setTimeout(() => {
-                icon.className = 'fa-solid fa-cloud-arrow-up';
-                icon.style.color = 'var(--primary-color)';
-                uploadTitleFlow.textContent = originalTitle;
-            }, 3000);
+        function loadRecentTasks() {
+            const listEl = document.getElementById('recent-tasks');
+            fetch(`${API_BASE}/tasks`)
+                .then(res => res.json())
+                .then(data => {
+                    const taskList = data.data && data.data.list ? data.data.list :[];
+                    if (data.success && taskList.length > 0) {
+                        const recentTasks = taskList.slice(0, 5);
+                        listEl.innerHTML = recentTasks.map(task => {
+                            const statusBadge = task.status === 'completed' 
+                                ? '<span class="badge" style="color: #00e676; border-color: rgba(0, 230, 118, 0.3); background: rgba(0, 230, 118, 0.1);">已完成</span>'
+                                : '<span class="badge" style="color: #ff9100; border-color: rgba(255, 145, 0, 0.3); background: rgba(255, 145, 0, 0.1);">等待执行</span>';
+                            const timeStr = task.schedule_time ? new Date(task.schedule_time).toLocaleString('zh-CN') : '待执行';
+                            const recurrenceText = { 'once': '单次', 'daily': '每日', 'weekly': '每周', 'monthly': '每月' }[task.recurrence] || '单次';
+                            return `
+                                <div class="list-item">
+                                    <div class="item-info">
+                                        <h4>${task.name}</h4>
+                                        <p>${timeStr} | ${recurrenceText}</p>
+                                    </div>
+                                    ${statusBadge}
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        listEl.innerHTML = `<div class="list-item"><div class="item-info"><h4>暂无任务记录</h4></div></div>`;
+                    }
+                }).catch(err => console.error('加载任务列表失败:', err));
         }
 
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-        }
-
-        // 其他上传区域（保留拖拽功能）
-        const uploadAreas = document.querySelectorAll('.upload-area');
-        
-        uploadAreas.forEach(area => {
-            if (area.id === 'drop-zone-flow') return;
-            
-            area.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                area.classList.add('dragover');
-            });
-
-            area.addEventListener('dragleave', () => {
-                area.classList.remove('dragover');
-            });
-
-            area.addEventListener('drop', (e) => {
-                e.preventDefault();
-                area.classList.remove('dragover');
-                
-                const icon = area.querySelector('i');
-                const title = area.querySelector('h3');
-                
-                icon.className = 'fa-solid fa-circle-check';
-                icon.style.color = '#00e676';
-                title.textContent = '文件解析成功！';
-                
-                setTimeout(() => {
-                    icon.className = 'fa-solid fa-file-excel';
-                    icon.style.color = 'var(--primary-color)';
-                    title.textContent = '继续拖拽文件至此';
-                }, 3000);
-            });
-        });
-
-        // 员工名单 - 文件上传功能
-        const employeeUploadArea = document.getElementById('upload-area-employee');
-        const fileInputEmployee = document.getElementById('file-input-employee');
-        const selectBtnEmployee = document.getElementById('select-btn-employee');
-        const uploadTitleEmployee = document.getElementById('upload-title-employee');
-        const uploadSubtitleEmployee = document.getElementById('upload-subtitle-employee');
-        const fileNameEmployee = document.getElementById('file-name-employee');
-
-        selectBtnEmployee.addEventListener('click', () => {
-            fileInputEmployee.click();
-        });
-
-        fileInputEmployee.addEventListener('change', (e) => {
-            handleEmployeeFile(e.target.files[0]);
-        });
-
-        employeeUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            employeeUploadArea.classList.add('dragover');
-        });
-
-        employeeUploadArea.addEventListener('dragleave', () => {
-            employeeUploadArea.classList.remove('dragover');
-        });
-
-        employeeUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            employeeUploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                handleEmployeeFile(file);
-            }
-        });
-
-        const API_BASE = 'http://localhost:3000/api';
-
-        function handleEmployeeFile(file) {
-            if (!file) return;
-
-            const validExtensions = ['.xlsx', '.xls', '.csv'];
-            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
-            if (!validExtensions.includes(fileExtension)) {
-                showEmployeeUploadError('仅支持 .xlsx, .xls, .csv 格式文件');
-                return;
-            }
-
-            if (file.size > 50 * 1024 * 1024) {
-                showEmployeeUploadError('文件大小超过 50MB 限制');
-                return;
-            }
-
-            const icon = employeeUploadArea.querySelector('i');
-            const btn = selectBtnEmployee;
-            const originalBtnText = btn.innerHTML;
-
-            icon.className = 'fa-solid fa-spinner fa-spin';
-            icon.style.color = 'var(--primary-color)';
-            uploadTitleEmployee.textContent = '正在上传文件...';
-            uploadSubtitleEmployee.style.display = 'none';
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 上传中...';
-            btn.style.pointerEvents = 'none';
-            fileNameEmployee.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
-            fileNameEmployee.style.display = 'block';
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            fetch(`${API_BASE}/employees/upload`, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    icon.className = 'fa-solid fa-circle-check';
-                    icon.style.color = '#00e676';
-                    uploadTitleEmployee.textContent = data.message || '名单导入成功！';
-                    btn.innerHTML = '<i class="fa-solid fa-check"></i> 导入成功';
-                    btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
-                    loadEmployeeList();
-                } else {
-                    throw new Error(data.error || '上传失败');
-                }
-            })
-            .catch(err => {
-                showEmployeeUploadError('上传失败: ' + err.message);
-            })
-            .finally(() => {
-                setTimeout(() => {
-                    icon.className = 'fa-solid fa-file-excel';
-                    icon.style.color = 'var(--primary-color)';
-                    uploadTitleEmployee.textContent = '拖拽员工名单表至此';
-                    uploadSubtitleEmployee.style.display = 'block';
-                    btn.innerHTML = originalBtnText;
-                    btn.style.background = '';
-                    btn.style.pointerEvents = 'auto';
-                    fileNameEmployee.style.display = 'none';
-                    fileInputEmployee.value = '';
-                }, 3000);
-            });
-        }
-
-        function showEmployeeUploadError(message) {
-            const icon = employeeUploadArea.querySelector('i');
-            const originalTitle = uploadTitleEmployee.textContent;
-            icon.className = 'fa-solid fa-circle-exclamation';
-            icon.style.color = '#ff5252';
-            uploadTitleEmployee.textContent = message;
-
-            setTimeout(() => {
-                icon.className = 'fa-solid fa-file-excel';
-                icon.style.color = 'var(--primary-color)';
-                uploadTitleEmployee.textContent = originalTitle;
-            }, 3000);
-        }
+        // ==================== 🟢 员工名单列表加载、搜索与删除 ====================
+        let allEmployees =[]; 
 
         function loadEmployeeList() {
             const listEl = document.getElementById('employee-list');
@@ -880,38 +793,90 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && data.data.length > 0) {
-                        listEl.innerHTML = data.data.map(emp => {
-                            const flowCount = emp.matchedFlows ? emp.matchedFlows.length : 0;
-                            return `
-                                <div class="list-item" data-id="${emp.id}">
-                                    <div class="item-info">
-                                        <h4>${emp.name} - ${emp.position || '未设置岗位'}</h4>
-                                        <p>部门：${emp.department || '未设置'} | 入职日期：${emp.hireDate || '未设置'}</p>
-                                        <p style="font-size: 12px; color: var(--text-muted);">邮箱：${emp.email || '未设置'}</p>
-                                    </div>
-                                    <span class="badge">已匹配 ${flowCount} 个流程</span>
-                                </div>
-                            `;
-                        }).join('');
+                        allEmployees = data.data; 
+                        renderEmployeeList(allEmployees); 
                     } else {
-                        listEl.innerHTML = `
-                            <div class="list-item">
-                                <div class="item-info">
-                                    <h4>暂无待入职员工</h4>
-                                    <p>请上传员工名单</p>
-                                </div>
-                            </div>
-                        `;
+                        listEl.innerHTML = `<div class="list-item"><div class="item-info"><h4>暂无待入职员工</h4><p>请上传员工名单</p></div></div>`;
                     }
                 })
-                .catch(err => {
-                    console.error('加载员工列表失败:', err);
-                });
+                .catch(err => console.error('加载员工列表失败:', err));
         }
 
-        loadEmployeeList();
+        function renderEmployeeList(employees) {
+            const listEl = document.getElementById('employee-list');
+            if (!employees || employees.length === 0) {
+                listEl.innerHTML = `
+                    <div class="list-item">
+                        <div class="item-info">
+                            <h4 style="color: #ff6b6b;"><i class="fa-solid fa-circle-exclamation"></i> 暂无结果</h4>
+                            <p>没有找到匹配的员工数据</p>
+                        </div>
+                    </div>`;
+                return;
+            }
 
-        // 加载流程列表
+            listEl.innerHTML = employees.slice(0, 50).map(emp => {
+                const flowCount = emp.matchedFlows ? emp.matchedFlows.length : 0;
+                return `
+                    <div class="list-item" data-id="${emp.id}" style="display: flex; align-items: center; flex-wrap: wrap;">
+                        <div class="item-info" style="flex: 1; min-width: 200px;">
+                            <h4>${emp.name} - ${emp.position || '未设置岗位'}</h4>
+                            <p>部门：${emp.department || '未设置'} | 入职日期：${emp.hireDate ? emp.hireDate.substring(0, 10) : '未设置'}</p>
+                            <p style="font-size: 12px; color: var(--text-muted);">邮箱：${emp.email || '未设置'}</p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span class="badge">已匹配 ${flowCount} 个流程</span>
+                            <button class="btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteEmployee('${emp.id}', this)">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('search-employee-input')?.addEventListener('input', debounce(function(e) {
+            const keyword = e.target.value.toLowerCase().trim();
+            if (!keyword) {
+                renderEmployeeList(allEmployees);
+                return;
+            }
+            const filtered = allEmployees.filter(emp => 
+                (emp.name && emp.name.toLowerCase().includes(keyword)) ||
+                (emp.department && emp.department.toLowerCase().includes(keyword)) ||
+                (emp.position && emp.position.toLowerCase().includes(keyword))
+            );
+            renderEmployeeList(filtered);
+        }, 300));
+
+        // 删除员工逻辑
+        async function deleteEmployee(id, btn) {
+            if (!await showConfirmModal('确认删除员工', '确定要删除这位员工的记录吗？此操作无法恢复。')) return;
+            
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.style.pointerEvents = 'none';
+
+            try {
+                const res = await fetch(`${API_BASE}/employees/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    loadEmployeeList(); // 重新拉取列表
+                    loadDashboardStats(); // 更新顶栏数量
+                } else {
+                    alert('删除失败: ' + (data.error || '未知错误'));
+                    btn.innerHTML = originalHtml;
+                }
+            } catch (err) { 
+                alert('请求失败'); 
+                btn.innerHTML = originalHtml; 
+            }
+            btn.style.pointerEvents = 'auto';
+        }
+
+        // ==================== 🟢 流程知识库加载、搜索与删除 ====================
+        let allFlows =[]; 
+
         function loadFlowList() {
             const listEl = document.getElementById('flow-list');
             if (!listEl) return;
@@ -920,35 +885,195 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && data.data.length > 0) {
-                        listEl.innerHTML = data.data.slice(0, 5).map(flow => `
-                            <div class="list-item">
-                                <div class="item-info">
-                                    <h4>${flow.id}: ${flow.name}</h4>
-                                    <p>适配岗位：${flow.positions || '未设置'}</p>
-                                </div>
-                            </div>
-                        `).join('');
+                        allFlows = data.data; 
+                        renderFlowList(allFlows); 
                     } else {
-                        listEl.innerHTML = `
-                            <div class="list-item">
-                                <div class="item-info">
-                                    <h4>暂无流程数据</h4>
-                                    <p>请上传流程清单文件</p>
-                                </div>
-                            </div>
-                        `;
+                        listEl.innerHTML = `<div class="list-item"><div class="item-info"><h4>暂无流程数据</h4><p>请上传流程清单文件</p></div></div>`;
                     }
                 })
-                .catch(err => {
-                    console.error('加载流程列表失败:', err);
-                });
+                .catch(err => console.error('加载流程列表失败:', err));
         }
 
+        function renderFlowList(flows) {
+            const listEl = document.getElementById('flow-list');
+            if (!flows || flows.length === 0) {
+                listEl.innerHTML = `
+                    <div class="list-item">
+                        <div class="item-info">
+                            <h4 style="color: #ff6b6b;"><i class="fa-solid fa-circle-exclamation"></i> 暂无结果</h4>
+                            <p>没有找到匹配的流程数据</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            listEl.innerHTML = flows.slice(0, 50).map(flow => `
+                <div class="list-item" style="display: flex; align-items: center; flex-wrap: wrap;">
+                    <div class="item-info" style="flex: 1; min-width: 200px;">
+                        <h4>${flow.id}: ${flow.name}</h4>
+                        <p>适配岗位：${flow.positions || '未设置'}</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteFlow('${flow.id}', this)">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('search-flow-input')?.addEventListener('input', debounce(function(e) {
+            const keyword = e.target.value.toLowerCase().trim();
+            if (!keyword) {
+                renderFlowList(allFlows);
+                return;
+            }
+            const filtered = allFlows.filter(flow => 
+                (flow.name && flow.name.toLowerCase().includes(keyword)) ||
+                (flow.positions && flow.positions.toLowerCase().includes(keyword))
+            );
+            renderFlowList(filtered);
+        }, 300));
+
+        // 删除流程逻辑
+        async function deleteFlow(id, btn) {
+            if (!await showConfirmModal('确认删除流程', '确定要删除这条系统流程吗？此操作无法恢复。')) return;
+            
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.style.pointerEvents = 'none';
+
+            try {
+                const res = await fetch(`${API_BASE}/flows/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    loadFlowList(); // 重新拉取列表
+                    loadDashboardStats(); // 更新顶栏数量
+                } else {
+                    alert('删除失败: ' + (data.error || '未知错误'));
+                    btn.innerHTML = originalHtml;
+                }
+            } catch (err) { 
+                alert('请求失败'); 
+                btn.innerHTML = originalHtml; 
+            }
+            btn.style.pointerEvents = 'auto';
+        }
+
+        // 初始化调用区
+        loadDashboardStats();
+        loadRecentTasks();
+        loadEmployeeList();
         loadFlowList();
 
-        // ==================== 飞书机器人相关功能 ====================
+        // ==================== 文件上传通用拖拽逻辑 ====================
+        function handleFlowFile(file) {
+            if (!file) return;
+            const validExtensions = ['.xlsx', '.xls', '.csv'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!validExtensions.includes(fileExtension)) {
+                showUploadError('仅支持 .xlsx, .xls, .csv 格式文件'); return;
+            }
+            
+            const btn = document.getElementById('select-btn-flow');
+            const icon = flowUploadArea.querySelector('i');
+            const originalBtnText = btn.innerHTML;
 
-        // 刷新飞书连接状态
+            icon.className = 'fa-solid fa-spinner fa-spin';
+            document.getElementById('upload-title-flow').textContent = '正在上传文件...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 上传中...';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch(`${API_BASE}/flows/upload`, { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    icon.className = 'fa-solid fa-circle-check'; icon.style.color = '#00e676';
+                    document.getElementById('upload-title-flow').textContent = data.message || '导入成功！';
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> 导入成功';
+                    btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
+                    loadFlowList(); 
+                    loadDashboardStats();
+                } else throw new Error(data.error);
+            })
+            .catch(err => showUploadError('上传失败: ' + err.message))
+            .finally(() => setTimeout(() => {
+                icon.className = 'fa-solid fa-cloud-arrow-up'; icon.style.color = 'var(--primary-color)';
+                document.getElementById('upload-title-flow').textContent = '点击或将文件拖拽到此处';
+                btn.innerHTML = originalBtnText; btn.style.background = '';
+            }, 3000));
+        }
+
+        function handleEmployeeFile(file) {
+            if (!file) return;
+            const validExtensions =['.xlsx', '.xls', '.csv'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!validExtensions.includes(fileExtension)) {
+                showEmployeeUploadError('仅支持 .xlsx, .xls, .csv 格式文件'); return;
+            }
+            
+            const btn = document.getElementById('select-btn-employee');
+            const icon = employeeUploadArea.querySelector('i');
+            const originalBtnText = btn.innerHTML;
+
+            icon.className = 'fa-solid fa-spinner fa-spin';
+            document.getElementById('upload-title-employee').textContent = '正在上传文件...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 上传中...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch(`${API_BASE}/employees/upload`, { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    icon.className = 'fa-solid fa-circle-check'; icon.style.color = '#00e676';
+                    document.getElementById('upload-title-employee').textContent = data.message || '导入成功！';
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> 导入成功';
+                    btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
+                    loadEmployeeList(); 
+                    loadDashboardStats();
+                } else throw new Error(data.error);
+            })
+            .catch(err => showEmployeeUploadError('上传失败: ' + err.message))
+            .finally(() => setTimeout(() => {
+                icon.className = 'fa-solid fa-file-excel'; icon.style.color = 'var(--primary-color)';
+                document.getElementById('upload-title-employee').textContent = '拖拽员工名单表至此';
+                btn.innerHTML = originalBtnText; btn.style.background = '';
+            }, 3000));
+        }
+
+        const flowUploadArea = document.getElementById('drop-zone-flow');
+        const employeeUploadArea = document.getElementById('upload-area-employee');
+
+        document.getElementById('select-btn-flow').addEventListener('click', () => document.getElementById('file-input-flow').click());
+        document.getElementById('file-input-flow').addEventListener('change', e => handleFlowFile(e.target.files[0]));
+        document.getElementById('select-btn-employee').addEventListener('click', () => document.getElementById('file-input-employee').click());
+        document.getElementById('file-input-employee').addEventListener('change', e => handleEmployeeFile(e.target.files[0]));
+
+        [flowUploadArea, employeeUploadArea].forEach(area => {
+            area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+            area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+            area.addEventListener('drop', e => {
+                e.preventDefault(); area.classList.remove('dragover');
+                if(e.dataTransfer.files[0]) {
+                    area.id === 'drop-zone-flow' ? handleFlowFile(e.dataTransfer.files[0]) : handleEmployeeFile(e.dataTransfer.files[0]);
+                }
+            });
+        });
+
+        function showUploadError(msg) {
+            const icon = flowUploadArea.querySelector('i'); const title = document.getElementById('upload-title-flow');
+            icon.className = 'fa-solid fa-circle-exclamation'; icon.style.color = '#ff5252'; title.textContent = msg;
+        }
+        function showEmployeeUploadError(msg) {
+            const icon = employeeUploadArea.querySelector('i'); const title = document.getElementById('upload-title-employee');
+            icon.className = 'fa-solid fa-circle-exclamation'; icon.style.color = '#ff5252'; title.textContent = msg;
+        }
+
+        // ==================== 飞书机器人相关功能 ====================
         async function refreshFeishuStatus() {
             const statusEl = document.getElementById('feishu-status');
             try {
@@ -956,37 +1081,37 @@
                 const data = await res.json();
                 if (data.success && data.data.connected) {
                     statusEl.textContent = '已连接';
-                    statusEl.style.background = 'rgba(0,230,118,0.2)';
-                    statusEl.style.color = '#00e676';
-                } else {
-                    statusEl.textContent = '未连接';
-                    statusEl.style.background = 'rgba(255,100,100,0.2)';
-                    statusEl.style.color = '#ff6b6b';
-                }
+                    statusEl.style.background = 'rgba(0,230,118,0.2)'; statusEl.style.color = '#00e676';
+                } else throw new Error();
             } catch (err) {
-                statusEl.textContent = '离线';
-                statusEl.style.background = 'rgba(255,100,100,0.2)';
-                statusEl.style.color = '#ff6b6b';
+                statusEl.textContent = '未连接或离线';
+                statusEl.style.background = 'rgba(255,100,100,0.2)'; statusEl.style.color = '#ff6b6b';
             }
         }
+        refreshFeishuStatus(); setInterval(refreshFeishuStatus, 30000);
 
-        // 初始化时获取飞书状态
-        refreshFeishuStatus();
-        setInterval(refreshFeishuStatus, 30000);
+        async function loadDepartments() {
+            const select = document.getElementById('task-department');
+            try {
+                const res = await fetch(`${API_BASE}/departments`);
+                const data = await res.json();
+                if (data.success && data.data && data.data.length > 0) {
+                    select.innerHTML = data.data.map(d => `<option value="${d}" style="color: black;">${d}</option>`).join('');
+                } else {
+                    select.innerHTML = '<option value="" style="color: black;">暂无部门</option>';
+                }
+            } catch (err) {
+                select.innerHTML = '<option value="" style="color: black;">加载失败</option>';
+            }
+        }
+        loadDepartments();
 
-        // 目标员工群切换
         document.getElementById('task-target').addEventListener('change', function() {
             const deptContainer = document.getElementById('department-select-container');
             deptContainer.style.display = this.value === 'department' ? 'block' : 'none';
+            if (this.value === 'department') loadDepartments();
         });
 
-        // 获取选中的流程
-        function getSelectedFlows() {
-            const checkboxes = document.querySelectorAll('#task-flows input[type="checkbox"]:checked');
-            return Array.from(checkboxes).map(cb => cb.value);
-        }
-
-        // 创建推送任务
         async function createTask(btn) {
             const name = document.getElementById('task-name').value.trim();
             const targetType = document.getElementById('task-target').value;
@@ -994,244 +1119,139 @@
             let scheduleTime = document.getElementById('task-time').value;
             const recurrence = document.getElementById('task-recurrence').value;
 
-            if (!name) {
-                alert('请输入计划名称');
-                return;
-            }
-            if (!scheduleTime) {
-                alert('请选择推送时间');
-                return;
-            }
-
-            // 格式化日期为完整的 ISO 字符串（补充秒数）
-            if (scheduleTime) {
-                scheduleTime = scheduleTime + ':00';
-            }
-
+            if (!name || !scheduleTime) return alert('请输入完整信息');
+            scheduleTime += ':00';
+            
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 创建中...';
-            btn.style.pointerEvents = 'none';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 创建中...'; btn.style.pointerEvents = 'none';
 
             try {
                 const res = await fetch(`${API_BASE}/tasks`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name,
-                        targetType,
-                        targetDepartment: targetType === 'department' ? targetDepartment : null,
-                        scheduleTime,
-                        recurrence
-                    })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, targetType, targetDepartment: targetType === 'department' ? targetDepartment : null, scheduleTime, recurrence })
                 });
                 const data = await res.json();
-
                 if (data.success) {
                     btn.innerHTML = '<i class="fa-solid fa-check"></i> 创建成功';
                     btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
-                    
-                    // 清空表单
-                    document.getElementById('task-name').value = '';
-                    document.getElementById('task-time').value = '';
-                    
-                    // 刷新任务列表
-                    loadTaskList();
-                } else {
-                    alert('创建失败: ' + (data.error || '未知错误'));
-                    btn.innerHTML = originalText;
-                    btn.style.background = '';
-                }
-            } catch (err) {
-                alert('请求失败: ' + err.message);
-                btn.innerHTML = originalText;
-                btn.style.background = '';
-            }
-
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.style.background = '';
-                btn.style.pointerEvents = 'auto';
-            }, 2000);
+                    loadTaskList(currentPage);
+                    loadDashboardStats();
+                } else alert('创建失败: ' + data.error);
+            } catch (err) { alert('请求失败: ' + err.message); }
+            
+            setTimeout(() => { btn.innerHTML = originalText; btn.style.background = ''; btn.style.pointerEvents = 'auto'; }, 2000);
         }
 
-        // 加载任务列表
-        async function loadTaskList() {
+        // ==================== 任务列表与分页操作 ====================
+        let currentPage = 1, currentPageSize = 10;
+        
+        async function loadTaskList(page = 1, pageSize = 10) {
             const listEl = document.getElementById('task-list');
+            const paginationEl = document.getElementById('task-pagination');
+            currentPage = page; currentPageSize = pageSize;
             
             try {
-                const res = await fetch(`${API_BASE}/tasks`);
+                const res = await fetch(`${API_BASE}/tasks?page=${page}&pageSize=${pageSize}`);
                 const data = await res.json();
                 
-                if (!data.success || data.data.length === 0) {
-                    listEl.innerHTML = `
-                        <div class="list-item">
-                            <div class="item-info">
-                                <h4>暂无推送任务</h4>
-                                <p>请在上方创建新的推送计划</p>
-                            </div>
-                        </div>
-                    `;
-                    return;
+                if (!data.success || !data.data || data.data.list.length === 0) {
+                    listEl.innerHTML = `<div class="list-item"><div class="item-info"><h4>暂无推送任务</h4></div></div>`;
+                    paginationEl.innerHTML = ''; return;
                 }
 
-                listEl.innerHTML = data.data.map(task => {
+                listEl.innerHTML = data.data.list.map(task => {
                     const statusBadge = task.status === 'pending' 
                         ? `<span class="badge" style="color: #ff9100; border-color: rgba(255,145,0,0.3); background: rgba(255,145,0,0.1);">等待执行</span>`
-                        : `<span class="badge" style="color: #00e676; border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1);">已完成</span>`;
-                    
-                    const recurrenceText = {
-                        'once': '单次',
-                        'daily': '每日',
-                        'weekly': '每周',
-                        'monthly': '每月'
-                    }[task.recurrence] || '单次';
-
-                    const timeStr = new Date(task.scheduleTime).toLocaleString('zh-CN');
-
+                        : task.status === 'completed'
+                        ? `<span class="badge" style="color: #00e676; border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1);">已完成</span>`
+                        : `<span class="badge" style="color: #ff5252; border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.1);">失败</span>`;
+                    const timeStr = new Date(task.schedule_time).toLocaleString('zh-CN');
                     return `
-                        <div class="list-item" data-task-id="${task.id}" style="display: flex; align-items: center;">
-                            <div class="item-info" style="flex: 1;">
-                                <h4>${task.name}</h4>
-                                <p>${timeStr} | ${recurrenceText}</p>
+                        <div class="list-item" style="display: flex; align-items: center; flex-wrap: wrap;">
+                            <div class="item-info" style="flex: 1; min-width: 200px;">
+                                <h4>${task.name}</h4><p>${timeStr}</p>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                ${task.status === 'pending' ? `
-                                    <button class="btn" style="padding: 8px 16px; font-size: 13px;" onclick="triggerTask('${task.id}', this)">
-                                        <i class="fa-solid fa-paper-plane"></i> 立即推送
-                                    </button>
-                                ` : ''}
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                ${task.status === 'pending' ? `<button class="btn" style="padding: 8px 16px; font-size: 13px;" onclick="triggerTask('${task.id}', this)"><i class="fa-solid fa-paper-plane"></i></button>` : ''}
                                 ${statusBadge}
-                                <button class="btn" style="padding: 8px 16px; font-size: 13px; background: linear-gradient(90deg, #ff6b6b, #ff8e53);" onclick="deleteTask('${task.id}', this)">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
+                                <button class="btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteTask('${task.id}', this)"><i class="fa-solid fa-trash"></i></button>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 }).join('');
+                renderPagination(paginationEl, page, data.data.pagination.totalPages);
             } catch (err) {
-                listEl.innerHTML = `
-                    <div class="list-item">
-                        <div class="item-info">
-                            <h4>无法加载任务</h4>
-                            <p>请确保后端服务已启动 (localhost:3000)</p>
-                        </div>
-                    </div>
-                `;
+                listEl.innerHTML = `<div class="list-item"><div class="item-info"><h4>无法加载任务</h4></div></div>`; paginationEl.innerHTML = '';
             }
         }
 
-        // 删除任务
-        async function deleteTask(taskId, btn) {
-            if (!confirm('确定要删除这个推送任务吗？')) return;
+        function renderPagination(container, current, total) {
+            if (total <= 1) { container.innerHTML = ''; return; }
+            let html = current > 1 ? `<button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="loadTaskList(${current - 1}, 10)"><i class="fa-solid fa-chevron-left"></i></button>` : '';
+            for (let i = 1; i <= total; i++) {
+                if (i === current) html += `<span style="padding: 8px 14px; background: var(--primary-color); border-radius: 8px; color: #000; font-weight: 600;">${i}</span>`;
+                else if (i === 1 || i === total || Math.abs(i - current) <= 1) html += `<button class="btn" style="padding: 6px 12px; font-size: 13px; background: rgba(255,255,255,0.1);" onclick="loadTaskList(${i}, 10)">${i}</button>`;
+                else if (i === current - 2 || i === current + 2) html += `<span style="padding: 8px; color: var(--text-muted);">...</span>`;
+            }
+            html += current < total ? `<button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="loadTaskList(${current + 1}, 10)"><i class="fa-solid fa-chevron-right"></i></button>` : '';
+            container.innerHTML = html;
+        }
 
-            const originalText = btn.innerHTML;
+        async function deleteTask(id, btn) {
+            if (!await showConfirmModal('确认删除任务', '确定要删除这个推送任务吗？此操作无法恢复。')) return;
+            
+            const originalHtml = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             btn.style.pointerEvents = 'none';
-
+            
             try {
-                const res = await fetch(`${API_BASE}/tasks/${taskId}`, { method: 'DELETE' });
-                const data = await res.json();
-                
-                if (data.success) {
-                    loadTaskList();
-                } else {
-                    alert('删除失败');
-                    btn.innerHTML = originalText;
-                }
-            } catch (err) {
-                alert('请求失败: ' + err.message);
-                btn.innerHTML = originalText;
+                const res = await fetch(`${API_BASE}/tasks/${id}`, { method: 'DELETE' });
+                if ((await res.json()).success) {
+                    loadTaskList(currentPage);
+                    loadDashboardStats();
+                } else alert('删除失败');
+            } catch (err) { 
+                alert('请求失败'); 
+                btn.innerHTML = originalHtml; 
             }
-
             btn.style.pointerEvents = 'auto';
         }
 
-        // 手动触发任务
-        async function triggerTask(taskId, btn) {
-            const originalText = btn.innerHTML;
+        async function triggerTask(id, btn) {
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-            btn.style.pointerEvents = 'none';
-
             try {
-                const res = await fetch(`${API_BASE}/tasks/${taskId}/trigger`, { method: 'POST' });
-                const data = await res.json();
-                
-                if (data.success) {
-                    btn.innerHTML = '<i class="fa-solid fa-check"></i> 已发送';
-                    btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
-                    setTimeout(loadTaskList, 2000);
-                } else {
-                    alert('发送失败');
-                    btn.innerHTML = originalText;
-                }
-            } catch (err) {
-                alert('请求失败: ' + err.message);
-                btn.innerHTML = originalText;
-            }
-
-            setTimeout(() => {
-                btn.style.pointerEvents = 'auto';
-            }, 2000);
+                const res = await fetch(`${API_BASE}/tasks/${id}/trigger`, { method: 'POST' });
+                if ((await res.json()).success) setTimeout(() => loadTaskList(currentPage), 1000); else alert('发送失败');
+            } catch (err) { alert('请求失败'); btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>'; }
         }
 
-// ==================== Openclaw 对接逻辑 ====================
         async function askOpenclaw() {
             const inputEl = document.getElementById('openclaw-input');
             const responseEl = document.getElementById('openclaw-response');
             const btn = document.getElementById('openclaw-btn');
             const text = inputEl.value.trim();
 
-            if (!text) {
-                inputEl.style.borderColor = '#ff6b6b';
-                setTimeout(() => inputEl.style.borderColor = 'var(--glass-border)', 2000);
-                return;
-            }
+            if (!text) return;
 
-            const originalBtnText = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 处理中...';
-            btn.style.pointerEvents = 'none';
-            
-            responseEl.textContent = '🧠 Openclaw 正在思考中，请稍候...';
-            responseEl.style.color = '#a855f7';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 处理中...'; btn.style.pointerEvents = 'none';
+            responseEl.textContent = '🧠 Openclaw 正在思考中...'; responseEl.style.color = '#a855f7';
 
             try {
-                // 调用后端的 Openclaw 转发接口
                 const res = await fetch(`${API_BASE}/openclaw/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: text })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text })
                 });
                 const data = await res.json();
-
                 if (data.success) {
-                    responseEl.innerHTML = '✨ <span style="color: #00e676;">Openclaw 已回复！</span> (回复内容已填充至上方)';
-                    // 将 AI 返回的文本替换到输入框，方便 HR 进一步修改或复制
+                    responseEl.innerHTML = '✨ <span style="color: #00e676;">Openclaw 已回复！</span> (回复内容已填充)';
                     inputEl.value = data.data.reply;
-                    
-                    // 如果有需要，也可以自动把生成的文案填到推文计划的名字里
-                    // document.getElementById('task-name').value = "AI起草的推送任务"; 
-                } else {
-                    responseEl.textContent = '❌ 请求失败: ' + (data.error || '未知错误');
-                    responseEl.style.color = '#ff6b6b';
-                }
-            } catch (err) {
-                responseEl.textContent = '❌ 网络连接异常: ' + err.message;
-                responseEl.style.color = '#ff6b6b';
-            }
+                } else { responseEl.textContent = '❌ 请求失败: ' + data.error; responseEl.style.color = '#ff6b6b'; }
+            } catch (err) { responseEl.textContent = '❌ 网络异常'; responseEl.style.color = '#ff6b6b'; }
 
-            btn.innerHTML = originalBtnText;
-            btn.style.pointerEvents = 'auto';
+            btn.innerHTML = '<i class="fa-solid fa-sparkles"></i> 发送给 Openclaw'; btn.style.pointerEvents = 'auto';
         }
 
         // 页面加载时获取任务列表
         loadTaskList();
 
-        /* // 【新增代码】自动关闭时间选择器面板
-        document.getElementById('task-time').addEventListener('input', function() {
-            if (this.value) {
-                this.blur();
-            }
-        }); */
     </script>
 </body>
 </html>

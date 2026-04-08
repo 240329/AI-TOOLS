@@ -67,6 +67,27 @@ async function initDatabase() {
     await pool.query('ALTER TABLE flows ADD COLUMN positions VARCHAR(200) DEFAULT ""');
   }
 
+  // 创建 scheduled_tasks 表
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS scheduled_tasks (
+      id VARCHAR(36) PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      target_type VARCHAR(20) DEFAULT 'all',
+      target_department VARCHAR(100),
+      target_users JSON,
+      schedule_time DATETIME NOT NULL,
+      recurrence VARCHAR(20) DEFAULT 'once',
+      status VARCHAR(20) DEFAULT 'pending',
+      result JSON,
+      error_message TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      completed_at DATETIME,
+      INDEX idx_status (status),
+      INDEX idx_completed_at (completed_at),
+      INDEX idx_schedule_time (schedule_time)
+    )
+  `);
+
   console.log('✓ MySQL 数据库连接池已创建');
 }
 
@@ -221,6 +242,112 @@ async function matchFlowsByPosition(position) {
 }
 
 // ==================== 文件上传配置 ====================
+
+// 保存任务到数据库
+async function saveTaskToDB(task) {
+  try {
+    await pool.query(
+      `INSERT INTO scheduled_tasks (id, name, target_type, target_department, target_users, schedule_time, recurrence, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), schedule_time=VALUES(schedule_time)`,
+      [task.id, task.name, task.targetType || 'all', task.targetDepartment || null,
+       JSON.stringify(task.targetUsers || []), task.scheduleTime, task.recurrence || 'once', task.status || 'pending']
+    );
+    return true;
+  } catch (err) {
+    console.error('保存任务失败:', err.message);
+    return false;
+  }
+}
+
+// 更新任务状态和结果
+async function updateTaskStatus(taskId, status, result = null, errorMessage = null) {
+  try {
+    await pool.query(
+      `UPDATE scheduled_tasks SET status = ?, result = ?, error_message = ?, completed_at = ? WHERE id = ?`,
+      [status, result ? JSON.stringify(result) : null, errorMessage, new Date(), taskId]
+    );
+    return true;
+  } catch (err) {
+    console.error('更新任务状态失败:', err.message);
+    return false;
+  }
+}
+
+// 从数据库删除任务
+async function deleteTaskFromDB(taskId) {
+  try {
+    await pool.query('DELETE FROM scheduled_tasks WHERE id = ?', [taskId]);
+    return true;
+  } catch (err) {
+    console.error('删除任务失败:', err.message);
+    return false;
+  }
+}
+
+// 从数据库加载任务（启动时恢复）
+async function loadTasksFromDB() {
+  try {
+    const [rows] = await pool.query("SELECT * FROM scheduled_tasks WHERE status = 'pending'");
+    
+    // 安全解析 JSON 的辅助函数
+    const safeJsonParse = (str, defaultVal) => {
+      if (!str) return defaultVal;
+      try { return JSON.parse(str); } catch { return defaultVal; }
+    };
+    
+    rows.forEach(task => {
+      const scheduleTime = new Date(task.schedule_time);
+      const now = new Date();
+      
+      const taskData = {
+        id: task.id,
+        name: task.name,
+        targetType: task.target_type,
+        targetDepartment: task.target_department,
+        targetUsers: safeJsonParse(task.target_users, []),
+        scheduleTime: task.schedule_time,
+        recurrence: task.recurrence,
+        status: task.status,
+        createdAt: task.created_at
+      };
+      
+      tasks.set(task.id, taskData);
+      
+      if (scheduleTime > now) {
+        schedule.scheduleJob(task.id, scheduleTime, () => {
+          executePushTask(task.id);
+        });
+        console.log(`  - 已恢复任务 "${task.name}"，计划执行时间: ${scheduleTime.toLocaleString()}`);
+      } else {
+        console.log(`  - 任务 "${task.name}" 已过期，立即执行`);
+        executePushTask(task.id);
+      }
+    });
+    
+    console.log(`✓ 已恢复 ${rows.length} 个定时任务`);
+    return rows.length;
+  } catch (err) {
+    console.error('加载任务失败:', err.message);
+    return 0;
+  }
+}
+
+// 清理30天前已完成的任务
+async function cleanupOldTasks() {
+  try {
+    const [result] = await pool.query(
+      `DELETE FROM scheduled_tasks WHERE status = 'completed' AND completed_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`
+    );
+    if (result.affectedRows > 0) {
+      console.log(`✓ 已清理 ${result.affectedRows} 条历史任务记录`);
+    }
+    return result.affectedRows;
+  } catch (err) {
+    console.error('清理旧任务失败:', err.message);
+    return 0;
+  }
+}
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -454,6 +581,7 @@ async function executePushTask(taskId) {
 
   if (targetEmployees.length === 0) {
     console.log('没有目标员工，跳过发送');
+    await updateTaskStatus(taskId, 'completed', { success: 0, total: 0, details: [] }, '没有目标员工');
     return;
   }
 
@@ -466,28 +594,36 @@ async function executePushTask(taskId) {
     
     if (employeeFlows.length === 0) {
       console.log(`员工 ${employee.name} (${employee.position || '未设置岗位'}) 没有匹配的流程`);
-      return { success: false, error: '无匹配流程' };
+      return { employeeId: employee.id, employeeName: employee.name, email: employee.email, success: false, error: '无匹配流程' };
     }
     
-    // const openId = await findUserOpenId(employee.email, employee.name);
-    // console.log(`员工 ${employee.name} openId: ${openId}`);
-    
-    // if (!openId) {
-    //   console.log(`✗ 无法找到用户: ${employee.name} (${employee.email})`);
-    //   return { success: false, error: '用户未找到' };
-    // }
-    
     const card = buildFlowNotificationCard({ name: employee.name }, employeeFlows);
-    return sendMessage(employee.email, 'email', 'interactive', card);
+    const result = await sendMessage(employee.email, 'email', 'interactive', card);
+    
+    return {
+      employeeId: employee.id,
+      employeeName: employee.name,
+      email: employee.email,
+      success: result.success,
+      error: result.error || null,
+      messageId: result.messageId || null
+    };
   });
 
-  Promise.all(sendPromises).then(results => {
+  Promise.all(sendPromises).then(async (results) => {
     const successCount = results.filter(r => r.success).length;
     console.log(`任务 ${task.name} 完成: 成功 ${successCount}/${results.length}`);
     
     task.status = 'completed';
     task.completedAt = new Date();
-    task.result = { success: successCount, total: results.length };
+    task.result = { success: successCount, total: results.length, details: results };
+
+    // 更新数据库状态
+    await updateTaskStatus(taskId, 'completed', {
+      success: successCount,
+      total: results.length,
+      details: results
+    });
 
     // 如果是周期性任务，创建下一次执行
     if (task.recurrence !== 'once') {
@@ -497,7 +633,7 @@ async function executePushTask(taskId) {
 }
 
 // 安排周期性任务的下一次执行
-function scheduleNextRecurrence(task) {
+async function scheduleNextRecurrence(task) {
   let nextDate;
   const now = new Date();
   
@@ -518,6 +654,10 @@ function scheduleNextRecurrence(task) {
       status: 'pending',
       createdAt: new Date()
     };
+    
+    // 保存到数据库
+    await saveTaskToDB(newTask);
+    
     tasks.set(newTask.id, newTask);
     
     schedule.scheduleJob(newTask.id, nextDate, () => {
@@ -540,6 +680,30 @@ app.get('/api/status', (req, res) => {
       reconnectAttempts: feishuStatus.reconnectAttempts
     }
   });
+});
+
+// 获取仪表盘统计数据
+app.get('/api/dashboard/stats', async (req, res) => {
+  try {
+    const [flowRows] = await pool.query('SELECT COUNT(*) as count FROM flows');
+    const [employeeRows] = await pool.query('SELECT COUNT(*) as count FROM employees');
+    const taskCount = tasks.size;
+    const pendingTasks = Array.from(tasks.values()).filter(t => t.status === 'pending').length;
+    const completedTasks = Array.from(tasks.values()).filter(t => t.status === 'completed').length;
+
+    res.json({
+      success: true,
+      data: {
+        flowCount: flowRows[0].count,
+        employeeCount: employeeRows[0].count,
+        taskCount: taskCount,
+        pendingTaskCount: pendingTasks,
+        completedTaskCount: completedTasks
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // 获取员工列表
@@ -685,6 +849,18 @@ app.get('/api/flows', async (req, res) => {
   });
 });
 
+// 获取部门列表（去重）
+app.get('/api/departments', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != "" ORDER BY department'
+    );
+    res.json({ success: true, data: rows.map(r => r.department) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 上传流程清单
 app.post('/api/flows/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
@@ -770,19 +946,52 @@ app.delete('/api/employees/:id', async (req, res) => {
   }
 });
 
-// 获取所有任务
-app.get('/api/tasks', (req, res) => {
-  const taskList = Array.from(tasks.values()).sort((a, b) => 
-    new Date(b.createdAt) - new Date(a.createdAt)
-  );
-  res.json({
-    success: true,
-    data: taskList
-  });
+// 获取所有任务（分页）
+app.get('/api/tasks', async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  const offset = (page - 1) * pageSize;
+  
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM scheduled_tasks ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [pageSize, offset]
+    );
+    
+    const [countResult] = await pool.query(
+      'SELECT COUNT(*) as total FROM scheduled_tasks'
+    );
+    const total = countResult[0].total;
+    
+    const safeJsonParse = (str, defaultVal) => {
+      if (!str) return defaultVal;
+      try { return JSON.parse(str); } catch { return defaultVal; }
+    };
+    
+    res.json({
+      success: true,
+      data: {
+        list: rows.map(row => ({
+          ...row,
+          target_users: safeJsonParse(row.target_users, []),
+          result: safeJsonParse(row.result, null)
+        })),
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize)
+        }
+      }
+    });
+  } catch (err) {
+    console.error('获取任务列表失败:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // 创建定时任务
-app.post('/api/tasks', (req, res) => {
+app.post('/api/tasks', async (req, res) => {
   const { 
     name, 
     targetType, 
@@ -821,6 +1030,9 @@ app.post('/api/tasks', (req, res) => {
     createdAt: new Date()
   };
 
+  // 保存到数据库
+  await saveTaskToDB(task);
+
   tasks.set(taskId, task);
 
   // 安排定时执行
@@ -842,23 +1054,27 @@ app.post('/api/tasks', (req, res) => {
 });
 
 // 删除任务
-app.delete('/api/tasks/:id', (req, res) => {
+app.delete('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
   
-  if (!tasks.has(id)) {
-    return res.status(404).json({
-      success: false,
-      error: '任务不存在'
-    });
-  }
-
-  // 取消定时任务
+  // 取消定时任务（如果存在）
   const job = schedule.scheduledJobs[id];
   if (job) {
     job.cancel();
   }
 
+  // 从内存删除（如果存在）
   tasks.delete(id);
+
+  // 从数据库删除（无论任务是否在内存中）
+  const deleteResult = await deleteTaskFromDB(id);
+  
+  if (!deleteResult) {
+    return res.status(500).json({
+      success: false,
+      error: '删除任务失败'
+    });
+  }
 
   res.json({
     success: true,
@@ -993,6 +1209,13 @@ async function startServer() {
   flowList = await loadFlowsFromDB();
   console.log(`✓ 已加载 ${flowList.length} 条流程记录`);
   
+  // 从数据库恢复定时任务
+  console.log('  正在恢复定时任务...');
+  await loadTasksFromDB();
+  
+  // 清理30天前的历史任务
+  await cleanupOldTasks();
+  
   app.listen(PORT, '127.0.0.1', () => {
     console.log('\n========================================');
     console.log('  FlowHub 飞书应用机器人服务已启动');
@@ -1012,6 +1235,7 @@ async function startServer() {
     console.log(`    POST /api/employees/upload - 上传员工名单`);
     console.log(`    GET  /api/flows     - 获取流程列表`);
     console.log(`    POST /api/flows/upload - 上传流程清单`);
+    console.log(`    GET  /api/tasks     - 获取任务列表(分页)`);
     console.log(`    POST /api/tasks      - 创建推送任务`);
     console.log(`    DELETE /api/tasks/:id - 删除任务`);
     console.log(`    POST /api/tasks/:id/trigger - 手动触发`);
