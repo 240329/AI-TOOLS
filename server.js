@@ -443,14 +443,14 @@ async function sendMessage(receiveId, receiveIdType, msgType, content) {
 // 构建流程推送卡片消息
 function buildFlowNotificationCard(employee, flows) {
   const flowItems = flows.map(f => 
-    `•[${f.name}](${f.url})\n  适配岗位: ${f.positions || '通用'}`
+    `•[${f.name}](${f.url})`
   ).join('\n\n');
 
   return {
     header: {
       title: {
         tag: 'plain_text',
-        content: '📋 入职流程推送通知'
+        content: '📋 入职推送通知——流程清单'
       },
       template: 'blue'
     },
@@ -459,7 +459,7 @@ function buildFlowNotificationCard(employee, flows) {
         tag: 'div',
         text: {
           tag: 'lark_md',
-          content: `你好 **${employee.name}** 👋\n\n欢迎加入公司！以下是您需要了解的新员工流程：`
+          content: `您好 **${employee.name}** 👋\n\n欢迎加入追觅吹风机大家庭！为了帮助您快速融入团队并顺利开展工作，请您关注以下入职流程：`
         }
       },
       {
@@ -487,7 +487,7 @@ function buildFlowNotificationCard(employee, flows) {
         tag: 'div',
         text: {
           tag: 'lark_md',
-          content: `---\n💡 如有疑问，请联系HR或IT部门`
+          content: `---\n💡以上，如有任何疑问或建议，请随时联系各系统负责人：[追觅个护BG IT找人指引](https://dreametech.feishu.cn/wiki/ZWv7wXexdiecl9k98pVcbnl0nnb)`
         }
       }
     ]
@@ -579,15 +579,15 @@ async function executePushTask(taskId) {
 
 // 安排周期性任务的下一次执行
 async function scheduleNextRecurrence(task) {
+  const baseTime = new Date(task.scheduleTime);
   let nextDate;
-  const now = new Date();
   
   if (task.recurrence === 'daily') {
-    nextDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    nextDate = new Date(baseTime.getTime() + 24 * 60 * 60 * 1000);
   } else if (task.recurrence === 'weekly') {
-    nextDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    nextDate = new Date(baseTime.getTime() + 7 * 24 * 60 * 60 * 1000);
   } else if (task.recurrence === 'monthly') {
-    nextDate = new Date(now);
+    nextDate = new Date(baseTime);
     nextDate.setMonth(nextDate.getMonth() + 1);
   }
 
@@ -870,6 +870,30 @@ app.delete('/api/flows/:id', async (req, res) => {
   }
 });
 
+// ==================== 辅助函数 ====================
+
+function getTargetDisplay(targetType, targetDepartment, targetUsers) {
+  if (targetType === 'all') {
+    return '全部员工';
+  } else if (targetType === 'department') {
+    return targetDepartment || '指定部门';
+  } else if (targetType === 'custom') {
+    const count = Array.isArray(targetUsers) ? targetUsers.length : 0;
+    return count > 0 ? `${count} 人` : '指定员工';
+  }
+  return '全部员工';
+}
+
+function getRecurrenceDisplay(recurrence) {
+  const map = {
+    'once': '一次性',
+    'daily': '每天',
+    'weekly': '每周',
+    'monthly': '每月'
+  };
+  return map[recurrence] || recurrence;
+}
+
 // 获取所有任务（分页）
 app.get('/api/tasks', async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -896,9 +920,19 @@ app.get('/api/tasks', async (req, res) => {
       success: true,
       data: {
         list: rows.map(row => ({
-          ...row,
-          target_users: safeJsonParse(row.target_users,[]),
-          result: safeJsonParse(row.result, null)
+          id: row.id,
+          name: row.name,
+          target_type: row.target_type,
+          target_department: row.target_department,
+          target_users: safeJsonParse(row.target_users, []),
+          target_display: getTargetDisplay(row.target_type, row.target_department, safeJsonParse(row.target_users, [])),
+          schedule_time: row.schedule_time,
+          recurrence: row.recurrence,
+          recurrence_display: getRecurrenceDisplay(row.recurrence),
+          status: row.status,
+          result: safeJsonParse(row.result, null),
+          created_at: row.created_at,
+          completed_at: row.completed_at
         })),
         pagination: {
           page,
