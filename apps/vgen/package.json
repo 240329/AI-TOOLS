@@ -1,0 +1,8 @@
+{
+  "name": "vgen-server",
+  "description": "V-GEN Studio 视频生成服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

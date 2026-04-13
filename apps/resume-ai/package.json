@@ -1,0 +1,8 @@
+{
+  "name": "resume-ai-server",
+  "description": "Resume AI 智能简历分析服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

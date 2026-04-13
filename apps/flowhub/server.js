@@ -30,9 +30,9 @@ async function initDatabase() {
     queueLimit: 0
   });
 
-  // 创建 employees 表
+  // 创建 flowhub_flowhub_employees 表
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS employees (
+    CREATE TABLE IF NOT EXISTS flowhub_flowhub_employees (
       id VARCHAR(36) PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
       email VARCHAR(100),
@@ -43,9 +43,9 @@ async function initDatabase() {
     )
   `);
 
-  // 创建 flows 表
+  // 创建 flowhub_flowhub_flows 表
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS flows (
+    CREATE TABLE IF NOT EXISTS flowhub_flowhub_flows (
       id VARCHAR(20) PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
       positions VARCHAR(200),
@@ -56,20 +56,20 @@ async function initDatabase() {
   
   // 迁移旧表结构（移除 tags 和 target 列）
   try {
-    await pool.query('SELECT tags FROM flows LIMIT 1');
-    await pool.query('ALTER TABLE flows DROP COLUMN tags, DROP COLUMN target');
+    await pool.query('SELECT tags FROM flowhub_flowhub_flows LIMIT 1');
+    await pool.query('ALTER TABLE flowhub_flowhub_flows DROP COLUMN tags, DROP COLUMN target');
   } catch (err) { /* 列不存在或已删除 */ }
   
   // 添加 positions 列（如果不存在）
   try {
-    await pool.query('SELECT positions FROM flows LIMIT 1');
+    await pool.query('SELECT positions FROM flowhub_flowhub_flows LIMIT 1');
   } catch (err) {
-    await pool.query('ALTER TABLE flows ADD COLUMN positions VARCHAR(200) DEFAULT ""');
+    await pool.query('ALTER TABLE flowhub_flowhub_flows ADD COLUMN positions VARCHAR(200) DEFAULT ""');
   }
 
-  // 创建 scheduled_tasks 表
+  // 创建 flowhub_flowhub_scheduled_tasks 表
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS scheduled_tasks (
+    CREATE TABLE IF NOT EXISTS flowhub_flowhub_scheduled_tasks (
       id VARCHAR(36) PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
       target_type VARCHAR(20) DEFAULT 'all',
@@ -113,7 +113,7 @@ const tasks = new Map();
 // 从数据库获取所有员工
 async function getEmployeesFromDB() {
   try {
-    const [rows] = await pool.query('SELECT * FROM employees ORDER BY created_at DESC');
+    const [rows] = await pool.query('SELECT * FROM flowhub_employees ORDER BY created_at DESC');
     return rows;
   } catch (err) {
     console.error('获取员工失败:', err.message);
@@ -124,7 +124,7 @@ async function getEmployeesFromDB() {
 // 从数据库获取单个员工
 async function getEmployeeById(id) {
   try {
-    const[rows] = await pool.query('SELECT * FROM employees WHERE id = ?', [id]);
+    const[rows] = await pool.query('SELECT * FROM flowhub_employees WHERE id = ?', [id]);
     return rows[0] || null;
   } catch (err) {
     console.error('获取员工失败:', err.message);
@@ -133,13 +133,13 @@ async function getEmployeeById(id) {
 }
 
 // 批量保存员工到数据库
-async function saveEmployeesToDB(employees) {
-  if (employees.length === 0) return;
+async function saveEmployeesToDB(flowhub_employees) {
+  if (flowhub_employees.length === 0) return;
   
-  console.log('DEBUG saveEmployeesToDB called with:', JSON.stringify(employees, null, 2));
+  console.log('DEBUG saveEmployeesToDB called with:', JSON.stringify(flowhub_employees, null, 2));
   
-  const placeholders = employees.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
-  const values = employees.flatMap(emp =>[
+  const placeholders = flowhub_employees.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+  const values = flowhub_employees.flatMap(emp =>[
     emp.id, emp.name, emp.email, emp.hireDate, emp.department, emp.position
   ]);
   
@@ -147,7 +147,7 @@ async function saveEmployeesToDB(employees) {
   
   try {
     await pool.query(
-      `INSERT INTO employees (id, name, email, hire_date, department, position) VALUES ${placeholders} ON DUPLICATE KEY UPDATE name=VALUES(name), email=VALUES(email), hire_date=VALUES(hire_date), department=VALUES(department), position=VALUES(position)`,
+      `INSERT INTO flowhub_employees (id, name, email, hire_date, department, position) VALUES ${placeholders} ON DUPLICATE KEY UPDATE name=VALUES(name), email=VALUES(email), hire_date=VALUES(hire_date), department=VALUES(department), position=VALUES(position)`,
       values
     );
     return true;
@@ -160,7 +160,7 @@ async function saveEmployeesToDB(employees) {
 // 从数据库删除员工
 async function deleteEmployeeFromDB(id) {
   try {
-    await pool.query('DELETE FROM employees WHERE id = ?', [id]);
+    await pool.query('DELETE FROM flowhub_employees WHERE id = ?', [id]);
     return true;
   } catch (err) {
     console.error('删除员工失败:', err.message);
@@ -171,7 +171,7 @@ async function deleteEmployeeFromDB(id) {
 // 从数据库获取所有流程
 async function getFlowsFromDB() {
   try {
-    const [rows] = await pool.query('SELECT * FROM flows ORDER BY id');
+    const [rows] = await pool.query('SELECT * FROM flowhub_flows ORDER BY id');
     return rows;
   } catch (err) {
     console.error('获取流程失败:', err.message);
@@ -180,17 +180,17 @@ async function getFlowsFromDB() {
 }
 
 // 批量保存流程到数据库
-async function saveFlowsToDB(flows) {
-  if (flows.length === 0) return;
+async function saveFlowsToDB(flowhub_flows) {
+  if (flowhub_flows.length === 0) return;
   
-  const placeholders = flows.map(() => '(?, ?, ?, ?)').join(', ');
-  const values = flows.flatMap(flow =>[
+  const placeholders = flowhub_flows.map(() => '(?, ?, ?, ?)').join(', ');
+  const values = flowhub_flows.flatMap(flow =>[
     flow.id, flow.name, flow.positions || '', flow.url
   ]);
   
   try {
     await pool.query(
-      `INSERT INTO flows (id, name, positions, url) VALUES ${placeholders} ON DUPLICATE KEY UPDATE name=VALUES(name), positions=VALUES(positions), url=VALUES(url)`,
+      `INSERT INTO flowhub_flows (id, name, positions, url) VALUES ${placeholders} ON DUPLICATE KEY UPDATE name=VALUES(name), positions=VALUES(positions), url=VALUES(url)`,
       values
     );
     return true;
@@ -203,7 +203,7 @@ async function saveFlowsToDB(flows) {
 // 获取下一个流程ID
 async function getNextFlowId() {
   try {
-    const [rows] = await pool.query('SELECT id FROM flows ORDER BY id DESC LIMIT 1');
+    const [rows] = await pool.query('SELECT id FROM flowhub_flows ORDER BY id DESC LIMIT 1');
     if (rows.length === 0) return 'P-001';
     
     const lastId = rows[0].id;
@@ -219,10 +219,10 @@ async function getNextFlowId() {
 async function matchFlowsByPosition(position) {
   if (!position) return[];
   
-  const flows = await getFlowsFromDB();
+  const flowhub_flows = await getFlowsFromDB();
   const posLower = position.toLowerCase();
   
-  return flows.filter(flow => {
+  return flowhub_flows.filter(flow => {
     if (!flow.positions || flow.positions.trim() === '') return false;
     
     const keywords = flow.positions.split(',').map(k => k.trim().toLowerCase());
@@ -241,7 +241,7 @@ async function matchFlowsByPosition(position) {
 async function saveTaskToDB(task) {
   try {
     await pool.query(
-      `INSERT INTO scheduled_tasks (id, name, target_type, target_department, target_users, schedule_time, recurrence, status)
+      `INSERT INTO flowhub_scheduled_tasks (id, name, target_type, target_department, target_users, schedule_time, recurrence, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), schedule_time=VALUES(schedule_time)`,[task.id, task.name, task.targetType || 'all', task.targetDepartment || null,
        JSON.stringify(task.targetUsers || []), task.scheduleTime, task.recurrence || 'once', task.status || 'pending']
@@ -257,7 +257,7 @@ async function saveTaskToDB(task) {
 async function updateTaskStatus(taskId, status, result = null, errorMessage = null) {
   try {
     await pool.query(
-      `UPDATE scheduled_tasks SET status = ?, result = ?, error_message = ?, completed_at = ? WHERE id = ?`,
+      `UPDATE flowhub_scheduled_tasks SET status = ?, result = ?, error_message = ?, completed_at = ? WHERE id = ?`,
       [status, result ? JSON.stringify(result) : null, errorMessage, new Date(), taskId]
     );
     return true;
@@ -270,7 +270,7 @@ async function updateTaskStatus(taskId, status, result = null, errorMessage = nu
 // 从数据库删除任务
 async function deleteTaskFromDB(taskId) {
   try {
-    await pool.query('DELETE FROM scheduled_tasks WHERE id = ?', [taskId]);
+    await pool.query('DELETE FROM flowhub_scheduled_tasks WHERE id = ?', [taskId]);
     return true;
   } catch (err) {
     console.error('删除任务失败:', err.message);
@@ -281,7 +281,7 @@ async function deleteTaskFromDB(taskId) {
 // 从数据库加载任务（启动时恢复）
 async function loadTasksFromDB() {
   try {
-    const[rows] = await pool.query("SELECT * FROM scheduled_tasks WHERE status = 'pending'");
+    const[rows] = await pool.query("SELECT * FROM flowhub_scheduled_tasks WHERE status = 'pending'");
     
     // 安全解析 JSON 的辅助函数
     const safeJsonParse = (str, defaultVal) => {
@@ -330,7 +330,7 @@ async function loadTasksFromDB() {
 async function cleanupOldTasks() {
   try {
     const [result] = await pool.query(
-      `DELETE FROM scheduled_tasks WHERE status IN ('completed', 'failed') AND completed_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`
+      `DELETE FROM flowhub_scheduled_tasks WHERE status IN ('completed', 'failed') AND completed_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`
     );
     if (result.affectedRows > 0) {
       console.log(`✓ 已清理 ${result.affectedRows} 条历史任务记录`);
@@ -441,8 +441,8 @@ async function sendMessage(receiveId, receiveIdType, msgType, content) {
 }
 
 // 构建流程推送卡片消息
-function buildFlowNotificationCard(employee, flows) {
-  const flowItems = flows.map(f => 
+function buildFlowNotificationCard(employee, flowhub_flows) {
+  const flowItems = flowhub_flows.map(f => 
     `•[${f.name}](${f.url})`
   ).join('\n\n');
 
@@ -479,7 +479,7 @@ function buildFlowNotificationCard(employee, flows) {
               content: '查看全部流程 →'
             },
             type: 'primary',
-            url: 'https://your-company.com/flows'
+            url: 'https://your-company.com/flowhub_flows'
           }
         ]
       },
@@ -506,16 +506,16 @@ async function executePushTask(taskId) {
   console.log(`执行推送任务: ${task.name}`);
 
   // 从数据库获取员工列表
-  const employees = await getEmployeesFromDB();
+  const flowhub_employees = await getEmployeesFromDB();
   
   // 获取要发送的员工列表
   let targetEmployees =[];
   if (task.targetType === 'all') {
-    targetEmployees = employees;
+    targetEmployees = flowhub_employees;
   } else if (task.targetType === 'department' && task.targetDepartment) {
-    targetEmployees = employees.filter(e => e.department === task.targetDepartment);
+    targetEmployees = flowhub_employees.filter(e => e.department === task.targetDepartment);
   } else if (task.targetType === 'custom' && task.targetUsers) {
-    targetEmployees = employees.filter(e => task.targetUsers.includes(e.id));
+    targetEmployees = flowhub_employees.filter(e => task.targetUsers.includes(e.id));
   }
 
   if (targetEmployees.length === 0) {
@@ -628,7 +628,7 @@ async function scheduleNextRecurrence(task) {
 // ==================== API 路由 ====================
 
 // 获取飞书连接状态
-app.get('/api/status', (req, res) => {
+app.get('/api/flowhub/status', (req, res) => {
   res.json({
     success: true,
     data: {
@@ -640,10 +640,10 @@ app.get('/api/status', (req, res) => {
 });
 
 // 获取仪表盘统计数据
-app.get('/api/dashboard/stats', async (req, res) => {
+app.get('/api/flowhub/dashboard/stats', async (req, res) => {
   try {
-    const [flowRows] = await pool.query('SELECT COUNT(*) as count FROM flows');
-    const [employeeRows] = await pool.query('SELECT COUNT(*) as count FROM employees');
+    const [flowRows] = await pool.query('SELECT COUNT(*) as count FROM flowhub_flows');
+    const [employeeRows] = await pool.query('SELECT COUNT(*) as count FROM flowhub_employees');
     const taskCount = tasks.size;
     const pendingTasks = Array.from(tasks.values()).filter(t => t.status === 'pending').length;
     const completedTasks = Array.from(tasks.values()).filter(t => t.status === 'completed').length;
@@ -664,12 +664,12 @@ app.get('/api/dashboard/stats', async (req, res) => {
 });
 
 // 获取员工列表
-app.get('/api/employees', async (req, res) => {
+app.get('/api/flowhub/flowhub_employees', async (req, res) => {
   try {
-    const employees = await getEmployeesFromDB();
+    const flowhub_employees = await getEmployeesFromDB();
     
     // 异步获取每个员工的匹配流程
-    const employeesWithFlows = await Promise.all(employees.map(async emp => {
+    const flowhub_employeesWithFlows = await Promise.all(flowhub_employees.map(async emp => {
       const matchedFlows = await matchFlowsByPosition(emp.position);
       return {
         id: emp.id,
@@ -685,7 +685,7 @@ app.get('/api/employees', async (req, res) => {
     
     res.json({
       success: true,
-      data: employeesWithFlows
+      data: flowhub_employeesWithFlows
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -693,7 +693,7 @@ app.get('/api/employees', async (req, res) => {
 });
 
 // 上传员工名单
-app.post('/api/employees/upload', upload.single('file'), async (req, res) => {
+app.post('/api/flowhub/flowhub_employees/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: '请上传文件' });
   }
@@ -745,13 +745,13 @@ app.post('/api/employees/upload', upload.single('file'), async (req, res) => {
     fs.unlinkSync(req.file.path);
 
     // 获取总数
-    const employees = await getEmployeesFromDB();
+    const flowhub_employees = await getEmployeesFromDB();
 
     res.json({
       success: true,
       message: `成功导入 ${newEmployees.length} 条员工记录`,
       data: {
-        total: employees.length,
+        total: flowhub_employees.length,
         added: newEmployees.length
       }
     });
@@ -762,7 +762,7 @@ app.post('/api/employees/upload', upload.single('file'), async (req, res) => {
 });
 
 // 删除员工
-app.delete('/api/employees/:id', async (req, res) => {
+app.delete('/api/flowhub/flowhub_employees/:id', async (req, res) => {
   const { id } = req.params;
   
   const employee = await getEmployeeById(id);
@@ -776,7 +776,7 @@ app.delete('/api/employees/:id', async (req, res) => {
 });
 
 // 获取员工匹配的流程
-app.get('/api/employees/:id/flows', async (req, res) => {
+app.get('/api/flowhub/flowhub_employees/:id/flowhub_flows', async (req, res) => {
   const { id } = req.params;
   const employee = await getEmployeeById(id);
   
@@ -790,25 +790,25 @@ app.get('/api/employees/:id/flows', async (req, res) => {
     success: true,
     data: {
       employee,
-      flows: matchedFlows
+      flowhub_flows: matchedFlows
     }
   });
 });
 
 // 获取流程列表
-app.get('/api/flows', async (req, res) => {
-  const flows = await getFlowsFromDB();
+app.get('/api/flowhub/flowhub_flows', async (req, res) => {
+  const flowhub_flows = await getFlowsFromDB();
   res.json({
     success: true,
-    data: flows
+    data: flowhub_flows
   });
 });
 
 // 获取部门列表（去重）
-app.get('/api/departments', async (req, res) => {
+app.get('/api/flowhub/departments', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != "" ORDER BY department'
+      'SELECT DISTINCT department FROM flowhub_employees WHERE department IS NOT NULL AND department != "" ORDER BY department'
     );
     res.json({ success: true, data: rows.map(r => r.department) });
   } catch (err) {
@@ -817,7 +817,7 @@ app.get('/api/departments', async (req, res) => {
 });
 
 // 上传流程清单
-app.post('/api/flows/upload', upload.single('file'), async (req, res) => {
+app.post('/api/flowhub/flowhub_flows/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: '请上传文件' });
   }
@@ -854,13 +854,13 @@ app.post('/api/flows/upload', upload.single('file'), async (req, res) => {
 
     await saveFlowsToDB(newFlows);
     fs.unlinkSync(req.file.path);
-    const flows = await getFlowsFromDB();
+    const flowhub_flows = await getFlowsFromDB();
 
     res.json({
       success: true,
       message: `成功导入 ${newFlows.length} 条流程记录`,
       data: {
-        total: flows.length,
+        total: flowhub_flows.length,
         added: newFlows.length
       }
     });
@@ -871,11 +871,11 @@ app.post('/api/flows/upload', upload.single('file'), async (req, res) => {
 });
 
 // 删除流程
-app.delete('/api/flows/:id', async (req, res) => {
+app.delete('/api/flowhub/flowhub_flows/:id', async (req, res) => {
   const { id } = req.params;
   
   try {
-    await pool.query('DELETE FROM flows WHERE id = ?', [id]);
+    await pool.query('DELETE FROM flowhub_flows WHERE id = ?', [id]);
     res.json({ success: true, message: '流程已删除' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -907,19 +907,19 @@ function getRecurrenceDisplay(recurrence) {
 }
 
 // 获取所有任务（分页）
-app.get('/api/tasks', async (req, res) => {
+app.get('/api/flowhub/tasks', async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 10;
   const offset = (page - 1) * pageSize;
   
   try {
     const [rows] = await pool.query(
-      'SELECT * FROM scheduled_tasks ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      'SELECT * FROM flowhub_scheduled_tasks ORDER BY created_at DESC LIMIT ? OFFSET ?',
       [pageSize, offset]
     );
     
     const [countResult] = await pool.query(
-      'SELECT COUNT(*) as total FROM scheduled_tasks'
+      'SELECT COUNT(*) as total FROM flowhub_scheduled_tasks'
     );
     const total = countResult[0].total;
     
@@ -961,7 +961,7 @@ app.get('/api/tasks', async (req, res) => {
 });
 
 // 创建定时任务
-app.post('/api/tasks', async (req, res) => {
+app.post('/api/flowhub/tasks', async (req, res) => {
   const { 
     name, 
     targetType, 
@@ -1024,7 +1024,7 @@ app.post('/api/tasks', async (req, res) => {
 });
 
 // 删除任务
-app.delete('/api/tasks/:id', async (req, res) => {
+app.delete('/api/flowhub/tasks/:id', async (req, res) => {
   const { id } = req.params;
   
   // 取消定时任务（如果存在）
@@ -1053,7 +1053,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
 });
 
 // 手动触发任务
-app.post('/api/tasks/:id/trigger', async (req, res) => {
+app.post('/api/flowhub/tasks/:id/trigger', async (req, res) => {
   const { id } = req.params;
   const task = tasks.get(id);
 
@@ -1074,54 +1074,86 @@ app.post('/api/tasks/:id/trigger', async (req, res) => {
   });
 });
 
-// ==================== Openclaw 机器人交互接口 ====================
-// TODO: 等待 Openclaw API 对接完成后启用
-// app.post('/api/openclaw/chat', async (req, res) => {
-//   const { prompt } = req.body;
-//   
-//   if (!prompt) {
-//     return res.status(400).json({ success: false, error: '输入内容不能为空' });
-//   }
-// 
-//   try {
-//     console.log(`[Openclaw] 收到前端请求，准备对接 Openclaw: ${prompt}`);
-// 
-//     // 模拟等待 1.5 秒的大模型思考时间
-//     await new Promise(resolve => setTimeout(resolve, 1500));
-//     
-//     const mockReply = `嗨，我是 Openclaw！基于你的需求，我帮你起草了以下内容：\n\n【标题】欢迎加入！请查收您的系统激活指南 🎉\n\n【正文】\n你好！非常高兴你加入我们的团队。为了让你在入职第一天能顺畅地开始工作，我们准备了......\n\n（你的原始诉求：${prompt}）`;
-// 
-//     res.json({
-//       success: true,
-//       message: '与 Openclaw 交互成功',
-//       data: {
-//         reply: mockReply
-//       }
-//     });
-// 
-//   } catch (err) {
-//     console.error('Openclaw 对接异常:', err.message);
-//     res.status(500).json({ success: false, error: 'Openclaw 服务调用失败: ' + err.message });
-//   }
-// });
+// ==================== V-GEN STUDIO API ====================
+
+app.post('/api/vgen/generate', async (req, res) => {
+  const {
+    content,
+    character,
+    voice,
+    language,
+    aspectRatio,
+    resolution,
+    duration,
+    documentUrl
+  } = req.body;
+
+  if (!content) {
+    return res.status(400).json({
+      success: false,
+      error: '请输入说话内容'
+    });
+  }
+
+  try {
+    console.log(`[V-GEN] 收到生成请求:`, {
+      content: content.substring(0, 50) + '...',
+      character,
+      voice,
+      language,
+      aspectRatio,
+      resolution,
+      duration,
+      documentUrl
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const taskId = uuidv4();
+
+    res.json({
+      success: true,
+      message: '任务已提交',
+      data: {
+        taskId,
+        status: 'processing',
+        estimatedTime: 60,
+        previewUrl: `/uploads/preview-${taskId}.mp4`
+      }
+    });
+  } catch (err) {
+    console.error('V-GEN 生成失败:', err.message);
+    res.status(500).json({ success: false, error: '生成失败: ' + err.message });
+  }
+});
+
+app.get('/api/vgen/task/:id', async (req, res) => {
+  const { id } = req.params;
+
+  res.json({
+    success: true,
+    data: {
+      taskId: id,
+      status: 'completed',
+      progress: 100,
+      resultUrl: `/uploads/result-${id}.mp4`
+    }
+  });
+});
 
 // ==================== 启动服务器 ====================
 
 const PORT = config.port;
 
 async function startServer() {
-  // 初始化数据库连接
   await initDatabase();
   
-  // 从数据库加载流程列表
   flowList = await loadFlowsFromDB();
   console.log(`✓ 已加载 ${flowList.length} 条流程记录`);
   
-  // 从数据库恢复定时任务
   console.log('  正在恢复定时任务...');
   await loadTasksFromDB();
   
-  // 清理30天前的历史任务
   await cleanupOldTasks();
   
   app.listen(PORT, '127.0.0.1', () => {
@@ -1132,21 +1164,20 @@ async function startServer() {
     console.log(`  数据库: MySQL (flowhub)`);
     console.log('');
     
-    // 初始化飞书长连接
     console.log('  正在连接飞书机器人...');
     initFeishuConnection();
     
     console.log('');
     console.log('  API 接口:');
-    console.log(`    GET  /api/status      - 获取连接状态`);
-    console.log(`    GET  /api/employees  - 获取员工列表`);
-    console.log(`    POST /api/employees/upload - 上传员工名单`);
-    console.log(`    GET  /api/flows     - 获取流程列表`);
-    console.log(`    POST /api/flows/upload - 上传流程清单`);
-    console.log(`    GET  /api/tasks     - 获取任务列表(分页)`);
-    console.log(`    POST /api/tasks      - 创建推送任务`);
-    console.log(`    DELETE /api/tasks/:id - 删除任务`);
-    console.log(`    POST /api/tasks/:id/trigger - 手动触发`);
+    console.log(`    GET  /api/flowhub/status      - 获取连接状态`);
+    console.log(`    GET  /api/flowhub/flowhub_employees  - 获取员工列表`);
+    console.log(`    POST /api/flowhub/flowhub_employees/upload - 上传员工名单`);
+    console.log(`    GET  /api/flowhub/flowhub_flows     - 获取流程列表`);
+    console.log(`    POST /api/flowhub/flowhub_flows/upload - 上传流程清单`);
+    console.log(`    GET  /api/flowhub/tasks     - 获取任务列表(分页)`);
+    console.log(`    POST /api/flowhub/tasks      - 创建推送任务`);
+    console.log(`    DELETE /api/flowhub/tasks/:id - 删除任务`);
+    console.log(`    POST /api/flowhub/tasks/:id/trigger - 手动触发`);
     console.log('========================================\n');
   });
 }

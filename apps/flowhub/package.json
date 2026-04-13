@@ -1,0 +1,8 @@
+{
+  "name": "flowhub-server",
+  "description": "FlowHub 飞书应用机器人定时推送服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

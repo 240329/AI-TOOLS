@@ -1,0 +1,8 @@
+{
+  "name": "visionary-ai-server",
+  "description": "Visionary AI 全能视觉创意服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
