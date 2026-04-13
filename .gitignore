@@ -12,6 +12,7 @@ npm-debug.log*
 
 # 上传目录
 uploads/
+.planning/
 
 # 环境文件
 .env
