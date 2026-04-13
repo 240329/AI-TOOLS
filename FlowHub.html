@@ -593,7 +593,7 @@
                     </div>
                 </div>
 
-		<!-- Openclaw 智能助手交互区 -->
+		<!-- Openclaw 智能助手交互区 - 暂未启用，等待API对接
                 <div class="glass-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3><i class="fa-solid fa-robot" style="color: #a855f7;"></i> Openclaw 智能助手</h3>
@@ -612,6 +612,7 @@
                         </div>
                     </div>
                 </div>
+		-->
 
                 <!-- 新建推送计划 -->
                 <div class="glass-card">
@@ -1267,30 +1268,31 @@
             }
         }
 
-        async function askOpenclaw() {
-            const inputEl = document.getElementById('openclaw-input');
-            const responseEl = document.getElementById('openclaw-response');
-            const btn = document.getElementById('openclaw-btn');
-            const text = inputEl.value.trim();
+        // TODO: 等待 Openclaw API 对接完成后启用
+        // async function askOpenclaw() {
+        //     const inputEl = document.getElementById('openclaw-input');
+        //     const responseEl = document.getElementById('openclaw-response');
+        //     const btn = document.getElementById('openclaw-btn');
+        //     const text = inputEl.value.trim();
 
-            if (!text) return;
+        //     if (!text) return;
 
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 处理中...'; btn.style.pointerEvents = 'none';
-            responseEl.textContent = '🧠 Openclaw 正在思考中...'; responseEl.style.color = '#a855f7';
+        //     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 处理中...'; btn.style.pointerEvents = 'none';
+        //     responseEl.textContent = '🧠 Openclaw 正在思考中...'; responseEl.style.color = '#a855f7';
 
-            try {
-                const res = await fetch(`${API_BASE}/openclaw/chat`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    responseEl.innerHTML = '✨ <span style="color: #00e676;">Openclaw 已回复！</span> (回复内容已填充)';
-                    inputEl.value = data.data.reply;
-                } else { responseEl.textContent = '❌ 请求失败: ' + data.error; responseEl.style.color = '#ff6b6b'; }
-            } catch (err) { responseEl.textContent = '❌ 网络异常'; responseEl.style.color = '#ff6b6b'; }
+        //     try {
+        //         const res = await fetch(`${API_BASE}/openclaw/chat`, {
+        //             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text })
+        //         });
+        //         const data = await res.json();
+        //         if (data.success) {
+        //             responseEl.innerHTML = '✨ <span style="color: #00e676;">Openclaw 已回复！</span> (回复内容已填充)';
+        //             inputEl.value = data.data.reply;
+        //         } else { responseEl.textContent = '❌ 请求失败: ' + data.error; responseEl.style.color = '#ff6b6b'; }
+        //     } catch (err) { responseEl.textContent = '❌ 网络异常'; responseEl.style.color = '#ff6b6b'; }
 
-            btn.innerHTML = '<i class="fa-solid fa-sparkles"></i> 发送给 Openclaw'; btn.style.pointerEvents = 'auto';
-        }
+        //     btn.innerHTML = '<i class="fa-solid fa-sparkles"></i> 发送给 Openclaw'; btn.style.pointerEvents = 'auto';
+        // }
 
         // 页面加载时获取任务列表
         loadTaskList();

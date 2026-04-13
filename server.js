@@ -569,6 +569,18 @@ async function executePushTask(taskId) {
   // 更新数据库状态
   await updateTaskStatus(taskId, finalStatus, task.result);
 
+  // 单次任务：推送成功后删除已发送的员工
+  if (task.recurrence === 'once') {
+    const successEmployeeIds = results
+      .filter(r => r.success && r.employeeId)
+      .map(r => r.employeeId);
+
+    for (const empId of successEmployeeIds) {
+      await deleteEmployeeFromDB(empId);
+    }
+    console.log(`单次任务：已删除 ${successEmployeeIds.length} 位已推送员工`);
+  }
+
   // 如果是周期性任务，创建下一次执行
   if (task.recurrence !== 'once') {
     await scheduleNextRecurrence(task);
@@ -1063,34 +1075,35 @@ app.post('/api/tasks/:id/trigger', async (req, res) => {
 });
 
 // ==================== Openclaw 机器人交互接口 ====================
-app.post('/api/openclaw/chat', async (req, res) => {
-  const { prompt } = req.body;
-  
-  if (!prompt) {
-    return res.status(400).json({ success: false, error: '输入内容不能为空' });
-  }
-
-  try {
-    console.log(`[Openclaw] 收到前端请求，准备对接 Openclaw: ${prompt}`);
-
-    // 模拟等待 1.5 秒的大模型思考时间
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const mockReply = `嗨，我是 Openclaw！基于你的需求，我帮你起草了以下内容：\n\n【标题】欢迎加入！请查收您的系统激活指南 🎉\n\n【正文】\n你好！非常高兴你加入我们的团队。为了让你在入职第一天能顺畅地开始工作，我们准备了......\n\n（你的原始诉求：${prompt}）`;
-
-    res.json({
-      success: true,
-      message: '与 Openclaw 交互成功',
-      data: {
-        reply: mockReply
-      }
-    });
-
-  } catch (err) {
-    console.error('Openclaw 对接异常:', err.message);
-    res.status(500).json({ success: false, error: 'Openclaw 服务调用失败: ' + err.message });
-  }
-});
+// TODO: 等待 Openclaw API 对接完成后启用
+// app.post('/api/openclaw/chat', async (req, res) => {
+//   const { prompt } = req.body;
+//   
+//   if (!prompt) {
+//     return res.status(400).json({ success: false, error: '输入内容不能为空' });
+//   }
+// 
+//   try {
+//     console.log(`[Openclaw] 收到前端请求，准备对接 Openclaw: ${prompt}`);
+// 
+//     // 模拟等待 1.5 秒的大模型思考时间
+//     await new Promise(resolve => setTimeout(resolve, 1500));
+//     
+//     const mockReply = `嗨，我是 Openclaw！基于你的需求，我帮你起草了以下内容：\n\n【标题】欢迎加入！请查收您的系统激活指南 🎉\n\n【正文】\n你好！非常高兴你加入我们的团队。为了让你在入职第一天能顺畅地开始工作，我们准备了......\n\n（你的原始诉求：${prompt}）`;
+// 
+//     res.json({
+//       success: true,
+//       message: '与 Openclaw 交互成功',
+//       data: {
+//         reply: mockReply
+//       }
+//     });
+// 
+//   } catch (err) {
+//     console.error('Openclaw 对接异常:', err.message);
+//     res.status(500).json({ success: false, error: 'Openclaw 服务调用失败: ' + err.message });
+//   }
+// });
 
 // ==================== 启动服务器 ====================
 
