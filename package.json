@@ -2,8 +2,9 @@
   "name": "ai-tools-hub",
   "version": "1.0.0",
   "description": "AI Tools Hub - 多工具统一管理平台",
-  "main": "index.html",
+  "main": "server-main.js",
   "scripts": {
+    "start": "node server-main.js",
     "flowhub": "node apps/flowhub/server.js",
     "vgen": "node apps/vgen/server.js",
     "resume": "node apps/resume-ai/server.js",

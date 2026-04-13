@@ -16,6 +16,10 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use('/uploads', express.static('uploads'));
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // MySQL 连接池
 let pool;
 async function initDatabase() {
@@ -30,9 +34,9 @@ async function initDatabase() {
     queueLimit: 0
   });
 
-  // 创建 flowhub_flowhub_employees 表
+  // 创建 flowhub_employees 表
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS flowhub_flowhub_employees (
+    CREATE TABLE IF NOT EXISTS flowhub_employees (
       id VARCHAR(36) PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
       email VARCHAR(100),
@@ -43,9 +47,9 @@ async function initDatabase() {
     )
   `);
 
-  // 创建 flowhub_flowhub_flows 表
+  // 创建 flowhub_flows 表
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS flowhub_flowhub_flows (
+    CREATE TABLE IF NOT EXISTS flowhub_flows (
       id VARCHAR(20) PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
       positions VARCHAR(200),
@@ -56,20 +60,20 @@ async function initDatabase() {
   
   // 迁移旧表结构（移除 tags 和 target 列）
   try {
-    await pool.query('SELECT tags FROM flowhub_flowhub_flows LIMIT 1');
-    await pool.query('ALTER TABLE flowhub_flowhub_flows DROP COLUMN tags, DROP COLUMN target');
+    await pool.query('SELECT tags FROM flowhub_flows LIMIT 1');
+    await pool.query('ALTER TABLE flowhub_flows DROP COLUMN tags, DROP COLUMN target');
   } catch (err) { /* 列不存在或已删除 */ }
   
   // 添加 positions 列（如果不存在）
   try {
-    await pool.query('SELECT positions FROM flowhub_flowhub_flows LIMIT 1');
+    await pool.query('SELECT positions FROM flowhub_flows LIMIT 1');
   } catch (err) {
-    await pool.query('ALTER TABLE flowhub_flowhub_flows ADD COLUMN positions VARCHAR(200) DEFAULT ""');
+    await pool.query('ALTER TABLE flowhub_flows ADD COLUMN positions VARCHAR(200) DEFAULT ""');
   }
 
-  // 创建 flowhub_flowhub_scheduled_tasks 表
+  // 创建 flowhub_scheduled_tasks 表
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS flowhub_flowhub_scheduled_tasks (
+    CREATE TABLE IF NOT EXISTS flowhub_scheduled_tasks (
       id VARCHAR(36) PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
       target_type VARCHAR(20) DEFAULT 'all',
@@ -943,6 +947,7 @@ app.get('/api/flowhub/tasks', async (req, res) => {
           recurrence_display: getRecurrenceDisplay(row.recurrence),
           status: row.status,
           result: safeJsonParse(row.result, null),
+          error_message: row.error_message,
           created_at: row.created_at,
           completed_at: row.completed_at
         })),
@@ -1071,73 +1076,6 @@ app.post('/api/flowhub/tasks/:id/trigger', async (req, res) => {
     success: true,
     message: '任务已执行完毕',
     data: result
-  });
-});
-
-// ==================== V-GEN STUDIO API ====================
-
-app.post('/api/vgen/generate', async (req, res) => {
-  const {
-    content,
-    character,
-    voice,
-    language,
-    aspectRatio,
-    resolution,
-    duration,
-    documentUrl
-  } = req.body;
-
-  if (!content) {
-    return res.status(400).json({
-      success: false,
-      error: '请输入说话内容'
-    });
-  }
-
-  try {
-    console.log(`[V-GEN] 收到生成请求:`, {
-      content: content.substring(0, 50) + '...',
-      character,
-      voice,
-      language,
-      aspectRatio,
-      resolution,
-      duration,
-      documentUrl
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const taskId = uuidv4();
-
-    res.json({
-      success: true,
-      message: '任务已提交',
-      data: {
-        taskId,
-        status: 'processing',
-        estimatedTime: 60,
-        previewUrl: `/uploads/preview-${taskId}.mp4`
-      }
-    });
-  } catch (err) {
-    console.error('V-GEN 生成失败:', err.message);
-    res.status(500).json({ success: false, error: '生成失败: ' + err.message });
-  }
-});
-
-app.get('/api/vgen/task/:id', async (req, res) => {
-  const { id } = req.params;
-
-  res.json({
-    success: true,
-    data: {
-      taskId: id,
-      status: 'completed',
-      progress: 100,
-      resultUrl: `/uploads/result-${id}.mp4`
-    }
   });
 });
 

@@ -343,6 +343,55 @@
             transform: translateY(0) scale(1);
         }
 
+        /* 消息提示弹窗样式 */
+        .msg-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .msg-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .msg-modal-content {
+            width: 400px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-align: center;
+        }
+
+        .msg-modal-overlay.active .msg-modal-content {
+            transform: translateY(0) scale(1);
+        }
+
+        .msg-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .msg-text {
+            color: var(--text-color);
+            font-size: 16px;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
         .btn-cancel {
             background: rgba(255, 255, 255, 0.1);
             box-shadow: none;
@@ -702,6 +751,15 @@
         </div>
     </div>
 
+    <!-- 消息提示弹窗 -->
+    <div class="msg-modal-overlay" id="msg-modal">
+        <div class="msg-modal-content">
+            <div class="msg-icon" id="msg-icon"></div>
+            <div class="msg-text" id="msg-text"></div>
+            <button class="btn btn-primary" id="msg-ok-btn" onclick="closeMsgModal()">确定</button>
+        </div>
+    </div>
+
     <script>
         const API_BASE = 'http://localhost:3001/api/flowhub';
 
@@ -739,6 +797,30 @@
                 cancel.addEventListener('click', onCancel); 
                 confirm.addEventListener('click', onConfirm);
             });
+        }
+
+        // 🟢 工具函数：显示消息提示弹窗
+        function showMsgModal(msg, type = 'info') {
+            const modal = document.getElementById('msg-modal');
+            const msgText = document.getElementById('msg-text');
+            const msgIcon = document.getElementById('msg-icon');
+            
+            msgText.innerText = msg;
+            
+            if (type === 'success') {
+                msgIcon.innerHTML = '<i class="fa-solid fa-circle-check" style="color: #10b981;"></i>';
+            } else if (type === 'error') {
+                msgIcon.innerHTML = '<i class="fa-solid fa-circle-xmark" style="color: #ef4444;"></i>';
+            } else {
+                msgIcon.innerHTML = '<i class="fa-solid fa-circle-info" style="color: #3b82f6;"></i>';
+            }
+            
+            modal.classList.add('active');
+        }
+
+        // 🟢 工具函数：关闭消息提示弹窗
+        function closeMsgModal() {
+            document.getElementById('msg-modal').classList.remove('active');
         }
 
         // ==================== 页面导航与基础逻辑 ====================
@@ -786,7 +868,8 @@
                                 statusBadge = `<span class="badge" style="color: #00e676; border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1);">已完成${stats}</span>`;
                             } else {
                                 const stats = task.result ? ` (0/${task.result.total})` : '';
-                                statusBadge = `<span class="badge" style="color: #ff5252; border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.1);">失败${stats}</span>`;
+                                const errorMsg = task.error_message ? `<br><span style="font-size:11px;color:#ff5252;">${task.error_message}</span>` : '';
+                                statusBadge = `<span class="badge" style="color: #ff5252; border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.1);">失败${stats}${errorMsg}</span>`;
                             }
                             const timeStr = task.schedule_time ? new Date(task.schedule_time).toLocaleString('zh-CN') : '待执行';
                             const recurrenceText = { 'once': '单次', 'daily': '每日', 'weekly': '每周', 'monthly': '每月' }[task.recurrence] || '单次';
@@ -813,7 +896,7 @@
             const listEl = document.getElementById('employee-list');
             if (!listEl) return;
 
-            fetch(`${API_BASE}/employees`)
+            fetch(`${API_BASE}/flowhub_employees`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && data.data.length > 0) {
@@ -882,17 +965,17 @@
             btn.style.pointerEvents = 'none';
 
             try {
-                const res = await fetch(`${API_BASE}/employees/${id}`, { method: 'DELETE' });
+                const res = await fetch(`${API_BASE}/flowhub_employees/${id}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
                     loadEmployeeList(); // 重新拉取列表
                     loadDashboardStats(); // 更新顶栏数量
                 } else {
-                    alert('删除失败: ' + (data.error || '未知错误'));
+                    showMsgModal('删除失败: ' + (data.error || '未知错误'), 'error');
                     btn.innerHTML = originalHtml;
                 }
             } catch (err) { 
-                alert('请求失败'); 
+                showMsgModal('请求失败', 'error'); 
                 btn.innerHTML = originalHtml; 
             }
             btn.style.pointerEvents = 'auto';
@@ -905,7 +988,7 @@
             const listEl = document.getElementById('flow-list');
             if (!listEl) return;
 
-            fetch(`${API_BASE}/flows`)
+            fetch(`${API_BASE}/flowhub_flows`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && data.data.length > 0) {
@@ -968,17 +1051,17 @@
             btn.style.pointerEvents = 'none';
 
             try {
-                const res = await fetch(`${API_BASE}/flows/${id}`, { method: 'DELETE' });
+                const res = await fetch(`${API_BASE}/flowhub_flows/${id}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
                     loadFlowList(); // 重新拉取列表
                     loadDashboardStats(); // 更新顶栏数量
                 } else {
-                    alert('删除失败: ' + (data.error || '未知错误'));
+                    showMsgModal('删除失败: ' + (data.error || '未知错误'), 'error');
                     btn.innerHTML = originalHtml;
                 }
             } catch (err) { 
-                alert('请求失败'); 
+                showMsgModal('请求失败', 'error'); 
                 btn.innerHTML = originalHtml; 
             }
             btn.style.pointerEvents = 'auto';
@@ -1010,7 +1093,7 @@
             const formData = new FormData();
             formData.append('file', file);
 
-            fetch(`${API_BASE}/flows/upload`, { method: 'POST', body: formData })
+            fetch(`${API_BASE}/flowhub_flows/upload`, { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
@@ -1049,7 +1132,7 @@
             const formData = new FormData();
             formData.append('file', file);
 
-            fetch(`${API_BASE}/employees/upload`, { method: 'POST', body: formData })
+            fetch(`${API_BASE}/flowhub_employees/upload`, { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
@@ -1141,7 +1224,7 @@
             let scheduleTime = document.getElementById('task-time').value;
             const recurrence = document.getElementById('task-recurrence').value;
 
-            if (!name || !scheduleTime) return alert('请输入完整信息');
+            if (!name || !scheduleTime) return showMsgModal('请输入完整信息', 'error');
             scheduleTime += ':00';
             
             const originalText = btn.innerHTML;
@@ -1158,8 +1241,8 @@
                     btn.style.background = 'linear-gradient(90deg, #00b09b, #96c93d)';
                     loadTaskList(currentPage);
                     loadDashboardStats();
-                } else alert('创建失败: ' + data.error);
-            } catch (err) { alert('请求失败: ' + err.message); }
+                } else showMsgModal('创建失败: ' + data.error, 'error');
+            } catch (err) { showMsgModal('请求失败: ' + err.message, 'error'); }
             
             setTimeout(() => { btn.innerHTML = originalText; btn.style.background = ''; btn.style.pointerEvents = 'auto'; }, 2000);
         }
@@ -1190,7 +1273,8 @@
                         statusBadge = `<span class="badge" style="color: #00e676; border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.1);">已完成${stats}</span>`;
                     } else {
                         const stats = task.result ? ` (${task.result.success || 0}/${task.result.total || 0})` : '';
-                        statusBadge = `<span class="badge" style="color: #ff5252; border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.1);">失败${stats}</span>`;
+                        const errorMsg = task.error_message ? `<br><span style="font-size:11px;color:#ff5252;">${task.error_message}</span>` : '';
+                        statusBadge = `<span class="badge" style="color: #ff5252; border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.1);">失败${stats}${errorMsg}</span>`;
                     }
 
                     const timeStr = new Date(task.schedule_time).toLocaleString('zh-CN');
@@ -1239,9 +1323,9 @@
                 if ((await res.json()).success) {
                     loadTaskList(currentPage);
                     loadDashboardStats();
-                } else alert('删除失败');
+                } else showMsgModal('删除失败', 'error');
             } catch (err) { 
-                alert('请求失败'); 
+                showMsgModal('请求失败', 'error'); 
                 btn.innerHTML = originalHtml; 
             }
             btn.style.pointerEvents = 'auto';
@@ -1259,11 +1343,11 @@
                     loadTaskList(currentPage);
                     loadDashboardStats();
                 } else {
-                    alert('发送失败: ' + (data.error || '未知错误'));
+                    showMsgModal('发送失败: ' + (data.error || '未知错误'), 'error');
                     btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
                 }
             } catch (err) { 
-                alert('网络请求失败'); 
+                showMsgModal('网络请求失败', 'error'); 
                 btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>'; 
             }
         }
