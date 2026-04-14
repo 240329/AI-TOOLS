@@ -23,7 +23,7 @@ description: 飞书入职流程推送管理技能。当用户需要通过对话�
 
 处理流程：
 1. 解析用户提供的文件路径或请求用户上传Excel文件
-2. 调用 `POST /api/employees/upload` 上传文件
+2. 调用 `POST /api/flowhub/flowhub_employees/upload` 上传文件
 3. Excel格式要求：
    - 第1列：姓名（必填）
    - 第2列：邮箱
@@ -38,7 +38,7 @@ description: 飞书入职流程推送管理技能。当用户需要通过对话�
 
 处理流程：
 1. 解析用户提供的文件路径或请求用户上传Excel文件
-2. 调用 `POST /api/flows/upload` 上传文件
+2. 调用 `POST /api/flowhub/flowhub_flows/upload` 上传文件
 3. Excel格式要求：
    - 第1列：流程名称（必填）
    - 第2列：适配岗位（逗号分隔，如"研发,SAP,前端"）
@@ -57,7 +57,7 @@ description: 飞书入职流程推送管理技能。当用户需要通过对话�
    - 目标员工ID列表（当targetType为custom时必填）
    - 发送时间（必填，支持自然语言如"明天上午9点"）
    - 重复策略：once（一次性）/ daily（每天）/ weekly（每周）/ monthly（每月）
-2. 调用 `POST /api/tasks` 创建任务
+2. 调用 `POST /api/flowhub/tasks` 创建任务
 3. 返回任务创建结果
 
 ### 4. 查询操作
@@ -65,10 +65,10 @@ description: 飞书入职流程推送管理技能。当用户需要通过对话�
 用户指令包含："查看员工"、"查看流程"、"查看任务"、"查询状态"
 
 处理流程：
-- 员工列表：`GET /api/employees`
-- 流程列表：`GET /api/flows`
-- 任务列表：`GET /api/tasks`
-- 飞书状态：`GET /api/status`
+- 员工列表：`GET /api/flowhub/flowhub_employees`
+- 流程列表：`GET /api/flowhub/flowhub_flows`
+- 任务列表：`GET /api/flowhub/tasks`
+- 飞书状态：`GET /api/flowhub/status`
 
 ## 参数提取规则
 
@@ -89,7 +89,7 @@ description: 飞书入职流程推送管理技能。当用户需要通过对话�
 ```javascript
 const formData = new FormData();
 formData.append('file', excelFile);
-fetch('/api/employees/upload', {
+fetch('/api/flowhub/flowhub_employees/upload', {
   method: 'POST',
   body: formData
 });
@@ -97,13 +97,13 @@ fetch('/api/employees/upload', {
 
 ### 创建任务 (浏览器/Fetch)
 ```javascript
-fetch('/api/tasks', {
+fetch('/api/flowhub/tasks', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     name: '新员工入职流程推送',
     targetType: 'all',
-    scheduleTime: '2024-01-15T09:00:00',
+    scheduleTime: '2026-04-15T09:00:00',
     recurrence: 'once'
   })
 });
@@ -122,8 +122,8 @@ const data = JSON.stringify({
 
 const options = {
   hostname: 'localhost',
-  port: 3000,
-  path: '/api/tasks',
+  port: 3001,
+  path: '/api/flowhub/tasks',
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -156,7 +156,61 @@ req.end();
 - `references/excel-templates.md` - Excel 模板格式说明
 - `references/task-params.md` - 任务参数详细说明
 
-## Assets
+## Scripts
 
-- `assets/employee-template.xlsx` - 员工导入模板
-- `assets/flow-template.xlsx` - 流程导入模板
+脚本位于 `scripts/` 目录，使用命令行参数传入数据：
+
+### 上传员工
+
+```bash
+node scripts/upload-employees.js --data "姓名|邮箱|入职日期|部门|岗位" ...
+```
+
+示例：
+```bash
+node scripts/upload-employees.js --data "伟杰孙|sunweijie.wx@dreame.tech|2026/04/07|信息技术部|流程" --data "孙伟杰|sunweijie.wx@dreame.tech|2026/04/07|信息开发部|SAP"
+```
+
+### 上传流程
+
+```bash
+node scripts/upload-flows.js --data "流程名称|适配岗位|飞书文档链接" ...
+```
+
+示例：
+```bash
+node scripts/upload-flows.js --data "DREAME-合同申请|SAP,OA|https://dreametech.feishu.cn/wiki/xxx"
+```
+
+### 创建推送任务
+
+```bash
+node scripts/create-push-task.js --name "任务名" --scheduleTime "2026/04/14 10:50" [--targetType all] [--recurrence once] [--trigger]
+```
+
+- `--trigger`: 创建后立即执行
+- `--targetType`: all（全部）、department（部门）、custom（指定）
+- `--recurrence`: once、daily、weekly、monthly
+
+示例（定时）：
+```bash
+node scripts/create-push-task.js --name "test1" --scheduleTime "2026/04/14 10:50"
+```
+
+示例（立即执行）：
+```bash
+node scripts/create-push-task.js --name "test" --scheduleTime "2026/04/14 10:50" --trigger
+```
+
+### 查询
+
+```bash
+node scripts/query.js [employees|flows|tasks|status|departments]
+```
+
+示例：
+```bash
+node scripts/query.js employees
+node scripts/query.js flows
+node scripts/query.js tasks
+```
