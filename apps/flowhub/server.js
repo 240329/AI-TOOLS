@@ -486,106 +486,113 @@ async function executePushTask(taskId) {
 
   console.log(`执行推送任务: ${task.name}`);
 
-  const flowhub_employees = await getEmployeesFromDB();
+  try {
+    const flowhub_employees = await getEmployeesFromDB();
 
-  let targetEmployees = [];
-  if (task.targetType === 'all') {
-    targetEmployees = flowhub_employees;
-  } else if (task.targetType === 'department' && task.targetDepartment) {
-    targetEmployees = flowhub_employees.filter(e => e.department === task.targetDepartment);
-  } else if (task.targetType === 'custom' && task.targetUsers) {
-    targetEmployees = flowhub_employees.filter(e => task.targetUsers.includes(e.id));
-  }
+    let targetEmployees =[];
+    if (task.targetType === 'all') {
+      targetEmployees = flowhub_employees;
+    } else if (task.targetType === 'department' && task.targetDepartment) {
+      targetEmployees = flowhub_employees.filter(e => e.department === task.targetDepartment);
+    } else if (task.targetType === 'custom' && task.targetUsers) {
+      targetEmployees = flowhub_employees.filter(e => task.targetUsers.includes(e.id));
+    }
 
-  if (targetEmployees.length === 0) {
-    console.log('没有目标员工，跳过发送');
+    if (targetEmployees.length === 0) {
+      console.log('没有目标员工，跳过发送');
+      task.status = 'failed';
+      task.completedAt = new Date();
+      task.result = { success: 0, total: 0, details:[] };
+      // 记录失败原因
+      await updateTaskStatus(taskId, 'failed', task.result, '没有匹配的目标员工，发送已跳过');
+      return task.result;
+    }
+
+    const allFlows = await getFlowsFromDB();
+    const results =[];
+
+    const chunkSize = 10; 
+    for (let i = 0; i < targetEmployees.length; i += chunkSize) {
+      const chunk = targetEmployees.slice(i, i + chunkSize);
+
+      const chunkPromises = chunk.map(async (employee) => {
+        const employeeFlows = matchFlowsByPosition(employee.position, allFlows);
+
+        if (employeeFlows.length === 0) {
+          return { employeeId: employee.id, employeeName: employee.name, email: employee.email, success: false, error: '未匹配到任何流程' };
+        }
+
+        const card = buildFlowNotificationCard({ name: employee.name }, employeeFlows);
+        const result = await sendMessage(employee.email, 'email', 'interactive', card);
+
+        return {
+          employeeId: employee.id,
+          employeeName: employee.name,
+          email: employee.email,
+          success: result.success,
+          error: result.error || null,
+          messageId: result.messageId || null
+        };
+      });
+
+      const chunkResults = await Promise.all(chunkPromises);
+      results.push(...chunkResults);
+
+      if (i + chunkSize < targetEmployees.length) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const finalStatus = successCount > 0 ? 'completed' : 'failed';
+
+    console.log(`任务 ${task.name} 执行结束: 状态[${finalStatus}], 成功 ${successCount}/${results.length}`);
+
+    task.status = finalStatus;
+    task.completedAt = new Date();
+    task.result = { success: successCount, total: results.length, details: results };
+
+    // ✨ 提取失败原因 ✨
+    let errorMessage = null;
+    if (finalStatus === 'failed') {
+      const failedDetail = results.find(r => !r.success && r.error);
+      errorMessage = failedDetail ? failedDetail.error : '全部推送失败，请检查配置或网络';
+    }
+
+    // 存入数据库时传入 errorMessage
+    await updateTaskStatus(taskId, finalStatus, task.result, errorMessage);
+
+    if (task.recurrence === 'once') {
+      const successEmployeeIds = results
+        .filter(r => r.success && r.employeeId)
+        .map(r => r.employeeId);
+
+      if (successEmployeeIds.length > 0) {
+        try {
+          await pool.query('DELETE FROM flowhub_employees WHERE id IN (?)', [successEmployeeIds]);
+          console.log(`单次任务：已批量删除 ${successEmployeeIds.length} 位已推送员工`);
+        } catch (err) {
+          console.error('批量删除推送成功的员工失败:', err);
+        }
+      }
+      tasks.delete(taskId);
+    }
+
+    if (task.recurrence !== 'once') {
+      await scheduleNextRecurrence(task);
+    }
+
+    return task.result;
+
+  } catch (err) {
+    // 捕获未知的代码异常 / 数据库崩溃，并将异常记录进失败原因
+    console.error(`任务 ${task.name} 执行异常:`, err);
     task.status = 'failed';
     task.completedAt = new Date();
-    task.result = { success: 0, total: 0, details: [] };
-    await updateTaskStatus(taskId, 'failed', task.result, '没有目标员工');
-    return task.result;
+    const errMsg = err.message || '内部执行异常';
+    await updateTaskStatus(taskId, 'failed', null, errMsg);
+    return null;
   }
-
-  // 🟢 性能优化：提前取出所有的流程，防止在循环体内部引发高频的 N+1 查询
-  const allFlows = await getFlowsFromDB();
-  const results = [];
-
-  // 🟢 并发限流优化：利用分块 (Chunking) 实现受控并发，既提升了群发速度，也避免触发飞书 QPS 限流
-  const chunkSize = 10; // 每一批发送 10 人
-  for (let i = 0; i < targetEmployees.length; i += chunkSize) {
-    const chunk = targetEmployees.slice(i, i + chunkSize);
-
-    // 发起这一批次的并发请求
-    const chunkPromises = chunk.map(async (employee) => {
-      // 传入已取出的 allFlows，全过程内存级极速匹配
-      const employeeFlows = matchFlowsByPosition(employee.position, allFlows);
-      console.log(`处理员工: ${employee.name}, 岗位: ${employee.position}, 匹配到 ${employeeFlows.length} 个流程`);
-
-      if (employeeFlows.length === 0) {
-        console.log(`员工 ${employee.name} (${employee.position || '未设置岗位'}) 没有匹配的流程`);
-        return { employeeId: employee.id, employeeName: employee.name, email: employee.email, success: false, error: '无匹配流程' };
-      }
-
-      const card = buildFlowNotificationCard({ name: employee.name }, employeeFlows);
-      const result = await sendMessage(employee.email, 'email', 'interactive', card);
-
-      return {
-        employeeId: employee.id,
-        employeeName: employee.name,
-        email: employee.email,
-        success: result.success,
-        error: result.error || null,
-        messageId: result.messageId || null
-      };
-    });
-
-    // 等待这一批次发送完毕，汇总结果
-    const chunkResults = await Promise.all(chunkPromises);
-    results.push(...chunkResults);
-
-    // 发送完该批次后休眠 300 毫秒 (大约30 QPS速率，对飞书非常安全且比串行快很多)
-    if (i + chunkSize < targetEmployees.length) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-    }
-  }
-
-  const successCount = results.filter(r => r.success).length;
-  const finalStatus = successCount > 0 ? 'completed' : 'failed';
-
-  console.log(`任务 ${task.name} 执行结束: 状态 [${finalStatus}], 成功 ${successCount}/${results.length}`);
-
-  task.status = finalStatus;
-  task.completedAt = new Date();
-  task.result = { success: successCount, total: results.length, details: results };
-
-  await updateTaskStatus(taskId, finalStatus, task.result);
-
-  // 单次任务：推送成功后删除已发送的员工并释放内存
-  if (task.recurrence === 'once') {
-    const successEmployeeIds = results
-      .filter(r => r.success && r.employeeId)
-      .map(r => r.employeeId);
-
-    // 🟢 性能优化：合并为批量 DELETE
-    if (successEmployeeIds.length > 0) {
-      try {
-        await pool.query('DELETE FROM flowhub_employees WHERE id IN (?)', [successEmployeeIds]);
-        console.log(`单次任务：已批量删除 ${successEmployeeIds.length} 位已推送员工`);
-      } catch (err) {
-        console.error('批量删除推送成功的员工失败:', err);
-      }
-    }
-
-    // 释放内存，防止 OOM
-    tasks.delete(taskId);
-  }
-
-  // 如果是周期性任务，创建下一次执行
-  if (task.recurrence !== 'once') {
-    await scheduleNextRecurrence(task);
-  }
-
-  return task.result;
 }
 
 async function scheduleNextRecurrence(task) {
