@@ -1,18 +1,16 @@
-const path = require('path');
+require('dotenv').config();
 
 module.exports = {
-  // 数据库配置 (所有工具共享)
   database: {
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: 'Dreame2026',
-    database: 'flowhub'
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT) || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || 'flowhub'
   },
 
-  // 上传文件配置
   upload: {
-    maxFileSize: 50 * 1024 * 1024, // 50MB
+    maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 50 * 1024 * 1024,
     allowedExtensions: ['.xlsx', '.xls', '.csv']
   }
 };
