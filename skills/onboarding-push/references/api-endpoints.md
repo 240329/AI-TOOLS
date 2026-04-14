@@ -4,14 +4,14 @@ FlowHub 系统后端 API 接口文档。
 
 ## 基础信息
 
-- 基础URL: `http://localhost:3000`
+- 基础URL: `http://localhost:3001`
 - 数据格式: JSON
 
 ## 员工管理
 
 ### 获取员工列表
 ```
-GET /api/employees
+GET /api/flowhub/flowhub_employees
 ```
 
 响应:
@@ -34,7 +34,7 @@ GET /api/employees
 
 ### 上传员工名单
 ```
-POST /api/employees/upload
+POST /api/flowhub/flowhub_employees/upload
 Content-Type: multipart/form-data
 ```
 
@@ -60,19 +60,19 @@ Excel格式:
 
 ### 删除员工
 ```
-DELETE /api/employees/:id
+DELETE /api/flowhub/flowhub_employees/:id
 ```
 
 ### 获取员工匹配的流程
 ```
-GET /api/employees/:id/flows
+GET /api/flowhub/flowhub_employees/:id/flowhub_flows
 ```
 
 ## 流程管理
 
 ### 获取流程列表
 ```
-GET /api/flows
+GET /api/flowhub/flowhub_flows
 ```
 
 响应:
@@ -92,7 +92,7 @@ GET /api/flows
 
 ### 上传流程清单
 ```
-POST /api/flows/upload
+POST /api/flowhub/flowhub_flows/upload
 Content-Type: multipart/form-data
 ```
 
@@ -118,14 +118,48 @@ Excel格式:
 
 ### 删除流程
 ```
-DELETE /api/flows/:id
+DELETE /api/flowhub/flowhub_flows/:id
+```
+
+## 仪表盘
+
+### 获取统计数据
+```
+GET /api/flowhub/dashboard/stats
+```
+
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "flowCount": 10,
+    "employeeCount": 50,
+    "taskCount": 5,
+    "pendingTaskCount": 2,
+    "completedTaskCount": 3
+  }
+}
+```
+
+### 获取部门列表
+```
+GET /api/flowhub/departments
+```
+
+响应:
+```json
+{
+  "success": true,
+  "data": ["信息技术部", "产品中心", "研发中心"]
+}
 ```
 
 ## 任务管理
 
 ### 获取任务列表
 ```
-GET /api/tasks
+GET /api/flowhub/tasks
 ```
 
 响应:
@@ -148,7 +182,7 @@ GET /api/tasks
 
 ### 创建推送任务
 ```
-POST /api/tasks
+POST /api/flowhub/tasks
 Content-Type: application/json
 ```
 
@@ -182,19 +216,19 @@ Content-Type: application/json
 
 ### 删除任务
 ```
-DELETE /api/tasks/:id
+DELETE /api/flowhub/tasks/:id
 ```
 
 ### 手动触发任务
 ```
-POST /api/tasks/:id/trigger
+POST /api/flowhub/tasks/:id/trigger
 ```
 
 ## 系统状态
 
 ### 获取飞书连接状态
 ```
-GET /api/status
+GET /api/flowhub/status
 ```
 
 响应:
@@ -206,19 +240,5 @@ GET /api/status
     "lastConnected": "2024-01-10T10:00:00.000Z",
     "reconnectAttempts": 0
   }
-}
-```
-
-### 发送测试消息
-```
-POST /api/send-test
-Content-Type: application/json
-```
-
-请求体:
-```json
-{
-  "userId": "飞书用户ID",
-  "message": "测试消息内容"
 }
 ```
