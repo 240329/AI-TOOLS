@@ -440,7 +440,7 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
         tag: 'div',
         text: {
           tag: 'lark_md',
-          content: `您好 **${employee.name}** 👋\n\n欢迎加入追觅吹风机大家庭！为了帮助您快速融入团队并顺利开展工作，请您关注以下入职流程：`
+          content: `您好 **${employee.name}** 👋\n\n欢迎加入追觅个护大家庭！为了帮助您快速融入团队并顺利开展工作，请您关注以下流程：`
         }
       },
       {
@@ -460,7 +460,7 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
               content: '查看全部流程 →'
             },
             type: 'primary',
-            url: 'https://your-company.com/flowhub_flows' // 这里需要替换为实际前端地址
+            url: 'https://dreametech.feishu.cn/wiki/X3EUwOnyCiwUQAkKZ0CchkGBnEb'
           }
         ]
       },
@@ -1032,7 +1032,7 @@ async function startServer() {
   await loadTasksFromDB();
   await cleanupOldTasks();
 
-  app.listen(PORT, '127.0.0.1', () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log('\n========================================');
     console.log('  FlowHub 飞书应用机器人服务已启动');
     console.log('========================================');
