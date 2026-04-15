@@ -13,16 +13,16 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, '127.0.0.1', () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log('========================================');
     console.log('  🎯 MI HUB 主入口已启动');
     console.log('========================================');
-    console.log(`  地址: http://localhost:${PORT}`);
+    console.log(`  地址: http://${getIPAddress()}:${PORT}`);
     console.log('');
     console.log('  子应用入口:');
-    console.log('    http://localhost:3001 - FlowHub');
-    console.log('    http://localhost:3002 - V-GEN');
-    console.log('    http://localhost:3003 - Resume AI');
-    console.log('    http://localhost:3004 - Visionary');
+    console.log(`    http://${getIPAddress()}:3001 - FlowHub`);
+    console.log(`    http://${getIPAddress()}:3002 - V-GEN`);
+    console.log(`    http://${getIPAddress()}:3003 - Resume AI`);
+    console.log(`    http://${getIPAddress()}:3004 - Visionary`);
     console.log('========================================\n');
 });
