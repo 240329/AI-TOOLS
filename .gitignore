@@ -17,6 +17,10 @@ uploads/
 # 环境文件
 .env
 
+# 配置文件
+config.js
+apps/*/config.js
+
 # 系统文件
 .DS_Store
 Thumbs.db

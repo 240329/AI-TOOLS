@@ -1,36 +1,42 @@
 # AGENTS.md - AI Tools Repository
 
 ## Overview
-- **Project**: FlowHub - HR onboarding flow + Feishu (Lark) bot push platform for Dreame Technology
-- **Stack**: Node.js >= 16.0.0, Express, MySQL, node-schedule, @larksuiteoapi/node-sdk
-- **Entry**: `server.js` (backend), HTML files (frontend)
+- **Project**: MI HUB - Multi-app AI tools platform for Dreame Technology
+- **Stack**: Node.js >= 16.0.0, Express, MySQL, node-schedule, @larksuiteoapi/node-sdk, xlsx
 
 ## Commands
 ```bash
-npm install   # Install dependencies
-npm start    # Run server on port 3000
+npm start       # Main hub (port 3000)
+npm run flowhub # FlowHub (port 3001)
+npm run vgen    # V-GEN Studio (port 3002)
+npm run resume  # Resume AI (port 3003)
+npm run visionary # Visionary AI (port 3004)
+npm run start:all # Run all apps
 ```
 
 ## Architecture
-- **Backend**: Express server with Feishu bot API integration
-- **Frontend**: Static HTML files with inline CSS/JS
-- **Database**: MySQL database named `flowhub` must exist (credentials in config.js)
+- **Entry points**: Each app runs on its own port
+  - Main hub: `server-main.js` (port 3000) -> serves `index.html`, proxies to sub-apps
+  - FlowHub: `apps/flowhub/server.js` (port 3001)
+  - V-GEN: `apps/vgen/server.js` (port 3002)
+  - Resume AI: `apps/resume-ai/server.js` (port 3003)
+  - Visionary: `apps/visionary/server.js` (port 3004)
+- **Config**: `shared/config.js` -> app-specific `config.js` in each app
+- **Database**: MySQL database `flowhub` must exist (one DB, separate tables per app)
 
-## Testing
-No automated tests. Manual verification:
-1. Open HTML files in browser
-2. Check browser console for JS errors
-3. Verify assets load correctly
-
-## Agent Notes
-- No linting/typechecking configured
-- **Do not commit config.js** - contains API credentials (appId, appSecret) and database password
-- Use 2 spaces for indentation
-- Files: kebab-case (e.g., `FlowHub.html`), CSS classes: kebab-case, JS: camelCase
-- Backups follow pattern `*.backup` (max 5 versions)
+## Important Notes
+- **DO NOT commit**: `config.js` (contains appId/appSecret/DB passwords), `.env` (secrets)
+- No linting/typechecking - verify manually
+- 2 spaces indentation
+- Naming: kebab-case for files/CSS, camelCase for JS
 
 ## Git Workflow
 ```
 <type>: <description>
 Types: feat, fix, update, docs, style
 ```
+
+## Manual Verification
+1. Open `http://localhost:3000`
+2. Click tool cards to navigate to sub-apps
+3. Check browser console for JS errors

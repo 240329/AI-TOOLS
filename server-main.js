@@ -26,3 +26,17 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`    http://${getIPAddress()}:3004 - Visionary`);
     console.log('========================================\n');
 });
+
+function getIPAddress() {
+    const interfaces = require('os').networkInterfaces();
+    for (let devName in interfaces) {
+        let iface = interfaces[devName];
+        for (let i = 0; i < iface.length; i++) {
+            let alias = iface[i];
+            if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
+                return alias.address;
+            }
+        }
+    }
+    return 'localhost';
+}
