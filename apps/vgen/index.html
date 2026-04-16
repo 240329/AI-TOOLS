@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI数字人 - 开启理想生活</title>
+    <title>V-GEN Studio - AI视频生成</title>
     <style>
-        /* 基础重置 */
         * {
             margin: 0;
             padding: 0;
@@ -13,19 +12,18 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
-        /* 酷炫动态背景 */
         body {
             background-color: #050510;
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
-            overflow: hidden;
+            align-items: flex-start;
+            padding: 40px 20px;
+            overflow-x: hidden;
             color: #ffffff;
             position: relative;
         }
 
-        /* 背景流光动态光球 */
         .ambient-light {
             position: absolute;
             border-radius: 50%;
@@ -65,201 +63,334 @@
             100% { transform: translate(-30px, -50px) scale(0.9); }
         }
 
-        /* 主容器 */
         .container {
             position: relative;
             z-index: 10;
             width: 100%;
-            max-width: 1000px;
-            padding: 20px;
+            max-width: 1200px;
             animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             opacity: 0;
             transform: translateY(40px);
         }
 
         @keyframes slideUp {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* 顶部标题 */
         .header {
             text-align: center;
             font-size: 32px;
             font-weight: 600;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             letter-spacing: 2px;
-            text-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
         .highlight-text {
-            color: #00f2fe;
-            position: relative;
-            display: inline-flex;
-            align-items: center;
             background: linear-gradient(to right, #00f2fe, #4facfe);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            transition: all 0.3s ease;
-        }
-        
-        .highlight-text:hover {
-            text-shadow: 0 0 20px rgba(0, 242, 254, 0.6);
         }
 
-        /* 核心拟态玻璃面板 */
-        .glass-panel {
+        .main-panel {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255,255,255,0.05);
             border-radius: 24px;
             padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 16px;
             display: flex;
-            flex-direction: column;
-            gap: 30px;
-            transition: box-shadow 0.4s ease, border 0.4s ease;
+            align-items: center;
+            gap: 8px;
         }
 
-        .glass-panel:hover {
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 40px 0 rgba(0, 242, 254, 0.15);
+        .mode-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
-        /* 上半部分：纯输入区 */
+        .mode-tab {
+            padding: 10px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .mode-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .mode-tab.active {
+            background: rgba(0, 242, 254, 0.15);
+            border-color: #00f2fe;
+            color: #00f2fe;
+        }
+
         .input-section {
             display: flex;
-            min-height: 180px; /* 加大输入区高度，更显大气 */
+            gap: 20px;
+            min-height: 200px;
         }
 
-        /* 文本输入框 */
-        .text-area-container {
+        .text-input-container {
             flex: 1;
-            position: relative;
-            width: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         textarea {
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            border: none;
-            outline: none;
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
             color: #fff;
             font-size: 16px;
-            line-height: 1.6;
+            line-height: 1.8;
             resize: none;
-            padding-top: 10px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            border-color: rgba(0, 242, 254, 0.5);
         }
 
         textarea::placeholder {
             color: rgba(255, 255, 255, 0.3);
-            font-weight: 300;
-        }
-        
-        textarea::-webkit-scrollbar {
-            width: 6px;
-        }
-        textarea::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
-            border-radius: 3px;
         }
 
-        /* 底部工具栏 */
-        .toolbar {
+        .image-upload-area {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 20px;
-            flex-wrap: wrap; /* 适配窄屏幕 */
-            gap: 15px;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
         }
 
-        .tools-left {
+        .image-upload-area:hover {
+            border-color: rgba(0, 242, 254, 0.5);
+            background: rgba(0, 242, 254, 0.05);
+        }
+
+        .image-upload-area.has-image {
+            border-style: solid;
+            border-color: rgba(0, 242, 254, 0.5);
+        }
+
+        .image-upload-area img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-upload-area .upload-hint {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .image-upload-area .upload-hint svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .image-upload-area .remove-image {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 82, 82, 0.9);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .image-upload-area.has-image .remove-image {
             display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
         }
 
-        /* 毛玻璃按钮 */
-        .glass-btn {
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .option-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .option-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .option-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .option-btn {
+            padding: 8px 16px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 8px 16px;
             border-radius: 8px;
             color: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .option-btn.selected {
+            background: rgba(0, 242, 254, 0.15);
+            border-color: #00f2fe;
+            color: #00f2fe;
+        }
+
+        .advanced-options {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toggle-advanced {
+            background: none;
+            border: none;
+            color: rgba(0, 242, 254, 0.8);
             font-size: 14px;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: all 0.3s ease;
         }
 
-        .glass-btn svg {
-            width: 16px;
-            height: 16px;
-            fill: currentColor;
-        }
-
-        .glass-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-            border-color: rgba(255, 255, 255, 0.4);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-
-        .glass-btn.active-btn {
-            background: rgba(0, 242, 254, 0.1);
-            border-color: #00f2fe;
+        .toggle-advanced:hover {
             color: #00f2fe;
         }
 
-        .tools-right {
-            display: flex;
-            align-items: center;
+        .advanced-content {
+            display: none;
+            margin-top: 20px;
         }
 
-        /* 发送按钮 */
-        .submit-btn {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: #fff;
-            border: none;
+        .advanced-content.show {
+            display: block;
+        }
+
+        .switch-row {
             display: flex;
-            justify-content: center;
             align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 13px;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+            transition: background 0.3s;
         }
 
-        .submit-btn svg {
+        .switch.active {
+            background: rgba(0, 242, 254, 0.5);
+        }
+
+        .switch::after {
+            content: '';
+            position: absolute;
             width: 22px;
             height: 22px;
-            fill: #050510;
-            transition: transform 0.3s ease;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+
+        .switch.active::after {
+            transform: translateX(22px);
+        }
+
+        .switch-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .submit-section {
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .submit-btn {
+            padding: 16px 48px;
+            background: linear-gradient(135deg, #00f2fe, #4facfe);
+            border: none;
+            border-radius: 12px;
+            color: #050510;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .submit-btn:hover {
-            background: #00f2fe;
-            box-shadow: 0 0 20px rgba(0, 242, 254, 0.6);
-            transform: scale(1.1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 242, 254, 0.4);
         }
 
-        .submit-btn:hover svg {
-            transform: translateY(-2px) translateX(2px);
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .submit-btn.loading {
             pointer-events: none;
-            opacity: 0.7;
         }
 
         .submit-btn.loading svg {
@@ -271,199 +402,730 @@
             to { transform: rotate(360deg); }
         }
 
+        .progress-container {
+            display: none;
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .progress-title {
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .progress-status {
+            font-size: 14px;
+            color: rgba(0, 242, 254, 0.8);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00f2fe, #4facfe);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .result-container {
+            display: none;
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .result-container.show {
+            display: block;
+        }
+
+        @keyframes celebratePulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+            50% { transform: scale(1.02); box-shadow: 0 0 30px 10px rgba(76, 175, 80, 0.2); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+
+        .result-container.completed {
+            animation: celebratePulse 0.6s ease-out;
+        }
+
+        .result-url-container {
+            margin-top: 16px;
+        }
+
+        .result-url-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .result-url-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+            border-radius: 8px;
+            color: #00f2fe;
+            font-size: 12px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .result-url-input:focus {
+            outline: none;
+            border-color: #00f2fe;
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+        }
+
+        .result-title {
+            font-size: 18px;
+            color: #4caf50;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .result-title.completed {
+            animation: titlePop 0.5s ease-out;
+        }
+
+        @keyframes titlePop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .result-video {
+            width: 100%;
+            max-width: 800px;
+            border-radius: 12px;
+            background: #000;
+        }
+
+        .result-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .result-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .result-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
         .toast {
             position: fixed;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 242, 254, 0.15);
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(20, 20, 35, 0.95);
             border: 1px solid rgba(0, 242, 254, 0.3);
             color: #00f2fe;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 16px 32px;
+            border-radius: 12px;
             font-size: 14px;
             z-index: 1000;
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: all 0.3s;
         }
 
         .toast.show {
             opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
 
         .toast.error {
-            background: rgba(255, 82, 82, 0.15);
-            border-color: rgba(255, 82, 82, 0.3);
+            border-color: rgba(255, 82, 82, 0.5);
             color: #ff5252;
         }
 
         .toast.success {
-            background: rgba(76, 175, 80, 0.15);
-            border-color: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
             color: #4caf50;
         }
 
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 100;
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-overlay.show {
-            display: flex;
-        }
-
-        .modal {
-            background: rgba(20, 20, 35, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 16px;
-            padding: 24px;
-            max-width: 400px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal h3 {
-            margin: 0 0 16px;
-            font-size: 18px;
-            color: #fff;
-        }
-
-        .modal-option {
-            padding: 12px 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            color: rgba(255, 255, 255, 0.8);
-            transition: all 0.2s ease;
-        }
-
-        .modal-option:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(0, 242, 254, 0.3);
-        }
-
-        .modal-option.selected {
-            background: rgba(0, 242, 254, 0.1);
-            border-color: #00f2fe;
-            color: #00f2fe;
-        }
-
-        .modal-close {
-            margin-top: 16px;
-            width: 100%;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            border-radius: 8px;
-            color: rgba(255, 255, 255, 0.6);
-            cursor: pointer;
-        }
-
-        .modal-close:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-        }
-
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-
-    <!-- 背景环境光 -->
     <div class="ambient-light light-1"></div>
     <div class="ambient-light light-2"></div>
     <div class="ambient-light light-3"></div>
 
     <div class="container">
-        <!-- 标题更新 -->
         <h1 class="header">
-            追寻你的 
-            <span class="highlight-text">数字人</span> 
-            开启理想生活！
+            V-GEN <span class="highlight-text">Studio</span>
         </h1>
 
-        <div class="glass-panel">
+        <div class="main-panel">
+            <div class="panel-title">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                生成模式
+            </div>
+
+            <div class="mode-tabs">
+                <button class="mode-tab active" data-mode="text">文生视频</button>
+                <button class="mode-tab" data-mode="image">图生视频</button>
+            </div>
+
             <div class="input-section">
-                <!-- 全宽文本输入 -->
-                <div class="text-area-container">
-                    <textarea placeholder="说话内容 请输入你希望角色说出的内容..."></textarea>
+                <div class="text-input-container">
+                    <textarea id="promptInput" placeholder="请输入视频描述内容...&#10;&#10;例如：一位优雅的女性在咖啡馆中阅读书籍，阳光透过窗户洒在她身上，背景是模糊的城市街景。"></textarea>
+                </div>
+
+                <div class="image-upload-area" id="imageUploadArea">
+                    <div class="upload-hint">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/></svg>
+                        <div>点击上传图片</div>
+                        <div style="font-size: 12px; margin-top: 8px;">支持 PNG/JPG/WEBP</div>
+                    </div>
+                    <button class="remove-image" id="removeImage">&times;</button>
+                </div>
+                <input type="file" id="imageInput" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-item">
+                    <div class="option-label">视频比例</div>
+                    <div class="option-buttons" data-option="ratio">
+                        <button class="option-btn selected" data-value="16:9">16:9 横屏</button>
+                        <button class="option-btn" data-value="9:16">9:16 竖屏</button>
+                        <button class="option-btn" data-value="1:1">1:1 方形</button>
+                    </div>
+                </div>
+                <div class="option-item">
+                    <div class="option-label">分辨率</div>
+                    <div class="option-buttons" data-option="quality">
+                        <button class="option-btn" data-value="540p">540p</button>
+                        <button class="option-btn selected" data-value="720p">720p</button>
+                        <button class="option-btn" data-value="1080p">1080p</button>
+                    </div>
+                </div>
+                <div class="option-item">
+                    <div class="option-label">生成模型</div>
+                    <div class="option-buttons" data-option="model">
+                        <button class="option-btn" data-value="v3.5">v3.5</button>
+                        <button class="option-btn" data-value="v4">v4</button>
+                        <button class="option-btn selected" data-value="v5.6">v5.6</button>
+                        <button class="option-btn" data-value="v6">v6</button>
+                    </div>
+                </div>
+                <div class="option-item">
+                    <div class="option-label">运动模式</div>
+                    <div class="option-buttons" data-option="motionMode">
+                        <button class="option-btn selected" data-value="normal">Normal</button>
+                        <button class="option-btn" data-value="fast">Fast</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- 底部工具栏 -->
-            <div class="toolbar">
-                <div class="tools-left">
-                    <button class="glass-btn">
-                        <!-- 加号图标 -->
-                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                        角色
-                    </button>
-                    <button class="glass-btn">
-                        <!-- 声波图标 -->
-                        <svg viewBox="0 0 24 24"><path d="M12 3v18M8 8v8M4 11v2M16 6v12M20 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-                        音色
-                    </button>
-                    
-                    <!-- 垂直分割线 -->
-                    <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 0 4px;"></div>
+            <div class="advanced-options">
+                <button class="toggle-advanced" id="toggleAdvanced">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    高级选项
+                </button>
 
-                    <button class="glass-btn">
-                        <!-- 文档图标 -->
-                        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
-                        上传文档
-                    </button>
-                    <button class="glass-btn">
-                        <!-- 语言图标 -->
-                        <svg viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
-                        选择语言
-                    </button>
-                    <button class="glass-btn">
-                        <!-- 比例图标 -->
-                        <svg viewBox="0 0 24 24"><path d="M19 12h-2v3h-3v2h5v-5zM7 9h3V7H5v5h2V9zm14-6H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.99h18v14.02z"/></svg>
-                        比例
-                    </button>
-                    <button class="glass-btn">
-                        <!-- 分辨率图标 -->
-                        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                        分辨率
-                    </button>
-                    <button class="glass-btn">
-                        <!-- 时长图标 -->
-                        <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-                        时长
-                    </button>
-                    
-                </div>
+                <div class="advanced-content" id="advancedContent">
+                    <div class="switch-row">
+                        <div class="switch" id="switchLipSync"></div>
+                        <span class="switch-label">TTS 对口型</span>
+                    </div>
 
-                <div class="tools-right">
-                    <!-- 发送按钮 -->
-                    <button class="submit-btn">
-                        <!-- 向上箭头/发送图标 -->
-                        <svg viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>
-                    </button>
+                    <div class="switch-row">
+                        <div class="switch" id="switchSoundEffect"></div>
+                        <span class="switch-label">音效生成</span>
+                    </div>
+
+                    <div class="option-item" style="margin-top: 16px;">
+                        <div class="option-label">运镜效果</div>
+                        <div class="option-buttons" data-option="cameraMovement">
+                            <button class="option-btn selected" data-value="">无</button>
+                            <button class="option-btn" data-value="zoom_in">推进</button>
+                            <button class="option-btn" data-value="zoom_out">拉远</button>
+                            <button class="option-btn" data-value="horizontal_left">左移</button>
+                            <button class="option-btn" data-value="horizontal_right">右移</button>
+                            <button class="option-btn" data-value="crane_up">升起</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
-            <h3 id="modalTitle">请选择</h3>
-            <div id="modalOptions"></div>
-            <button class="modal-close" onclick="closeModal()">取消</button>
+            <div class="submit-section">
+                <button class="submit-btn" id="submitBtn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                    开始生成
+                </button>
+            </div>
         </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-header">
+                <span class="progress-title">视频生成中...</span>
+                <span class="progress-status" id="progressStatus">准备中</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            <div class="progress-info">
+                <span id="progressPercent">0%</span>
+                <span id="progressTime">预计剩余时间: 计算中...</span>
+            </div>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-title" id="resultTitle">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                生成完成
+            </div>
+            <video class="result-video" id="resultVideo" controls></video>
+            <div class="result-url-container">
+                <div class="result-url-label">视频链接</div>
+                <input type="text" class="result-url-input" id="resultUrlInput" readonly>
+            </div>
+            <div class="result-actions">
+                <button class="result-btn" id="downloadBtn">下载视频</button>
+                <button class="result-btn" id="copyUrlBtn">复制链接</button>
+                <button class="result-btn" id="openUrlBtn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:4px"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                    新窗口打开
+                </button>
+                <button class="result-btn" id="newTaskBtn">新建任务</button>
+            </div>
+        </div>
+
     </div>
 
     <div class="toast" id="toast"></div>
 
+    <script>
+        const state = {
+            mode: 'text',
+            prompt: '',
+            imgId: null,
+            imgUrl: null,
+            imgFile: null,
+            ratio: '16:9',
+            quality: '720p',
+            model: 'v5.6',
+            motionMode: 'normal',
+            lipSync: false,
+            soundEffect: false,
+            cameraMovement: '',
+            taskId: null,
+            pollTimer: null
+        };
+
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        function showToast(message, type = 'success') {
+            const toast = $('#toast');
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => toast.className = 'toast', 3000);
+        }
+
+        function setLoading(loading) {
+            const btn = $('#submitBtn');
+            if (loading) {
+                btn.classList.add('loading');
+                btn.disabled = true;
+                btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/></svg> 生成中...';
+            } else {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg> 开始生成';
+            }
+        }
+
+        function showProgress(show) {
+            $('#progressContainer').classList.toggle('show', show);
+        }
+
+        function updateProgress(percent, status) {
+            $('#progressFill').style.width = `${percent}%`;
+            $('#progressPercent').textContent = `${percent}%`;
+            if (status) {
+                $('#progressStatus').textContent = status;
+            }
+        }
+
+        function showResult(videoUrl) {
+            $('#resultContainer').classList.add('show', 'completed');
+            $('#resultTitle').classList.add('completed');
+            $('#resultVideo').src = videoUrl;
+            $('#resultUrlInput').value = decodeURIComponent(videoUrl);
+            setTimeout(() => {
+                $('#resultContainer').classList.remove('completed');
+                $('#resultTitle').classList.remove('completed');
+            }, 600);
+        }
+
+        function hideResult() {
+            $('#resultContainer').classList.remove('show', 'completed');
+            $('#resultTitle').classList.remove('completed');
+        }
+
+        function initOptionButtons() {
+            $$('.option-buttons').forEach(container => {
+                const option = container.dataset.option;
+                container.querySelectorAll('.option-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        state[option] = btn.dataset.value;
+                    });
+                });
+            });
+        }
+
+        function initModeTabs() {
+            $$('.mode-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    $$('.mode-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    state.mode = tab.dataset.mode;
+                    
+                    const uploadArea = $('#imageUploadArea');
+                    if (state.mode === 'text') {
+                        uploadArea.classList.add('hidden');
+                    } else {
+                        uploadArea.classList.remove('hidden');
+                    }
+                });
+            });
+        }
+
+        function initAdvancedToggle() {
+            $('#toggleAdvanced').addEventListener('click', () => {
+                $('#advancedContent').classList.toggle('show');
+            });
+        }
+
+        function initSwitches() {
+            $('#switchLipSync').addEventListener('click', function() {
+                this.classList.toggle('active');
+                state.lipSync = this.classList.contains('active');
+            });
+            
+            $('#switchSoundEffect').addEventListener('click', function() {
+                this.classList.toggle('active');
+                state.soundEffect = this.classList.contains('active');
+            });
+        }
+
+        function initImageUpload() {
+            const area = $('#imageUploadArea');
+            const input = $('#imageInput');
+            const removeBtn = $('#removeImage');
+
+            area.addEventListener('click', () => input.click());
+            
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    area.innerHTML = `<img src="${e.target.result}" alt="预览"><button class="remove-image" id="removeImage">&times;</button>`;
+                    area.classList.add('has-image');
+                    state.imgFile = file;
+                    state.imgUrl = e.target.result;
+                    
+                    $('#removeImage').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        resetImageUpload();
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetImageUpload();
+            });
+        }
+
+        function resetImageUpload() {
+            state.imgFile = null;
+            state.imgUrl = null;
+            state.imgId = null;
+            const area = $('#imageUploadArea');
+            area.classList.remove('has-image');
+            area.innerHTML = `
+                <div class="upload-hint">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/></svg>
+                    <div>点击上传图片</div>
+                    <div style="font-size: 12px; margin-top: 8px;">支持 PNG/JPG/WEBP</div>
+                </div>
+                <button class="remove-image" id="removeImage">&times;</button>
+            `;
+            $('#imageInput').value = '';
+            $('#removeImage').addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetImageUpload();
+            });
+        }
+
+        async function uploadImage() {
+            if (!state.imgFile) return null;
+
+            const formData = new FormData();
+            formData.append('image', state.imgFile);
+
+            const res = await fetch('/api/vgen/upload/image', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || '图片上传失败');
+            }
+            
+            return data.data.imgId;
+        }
+
+        async function submitTask() {
+            state.prompt = $('#promptInput').value.trim();
+            
+            if (state.mode === 'text' && !state.prompt) {
+                showToast('请输入视频描述内容', 'error');
+                return;
+            }
+            
+            if (state.mode === 'image' && !state.imgFile) {
+                showToast('请上传图片', 'error');
+                return;
+            }
+
+            setLoading(true);
+            showProgress(true);
+            hideResult();
+            updateProgress(0, '准备中...');
+
+            try {
+                let imgId = null;
+                
+                if (state.mode === 'image' && state.imgFile) {
+                    updateProgress(5, '上传图片...');
+                    imgId = await uploadImage();
+                    state.imgId = imgId;
+                    updateProgress(10, '图片上传完成');
+                }
+
+                updateProgress(15, '提交生成任务...');
+
+                const payload = {
+                    content: state.prompt,
+                    aspectRatio: state.ratio,
+                    resolution: state.quality,
+                    model: state.model,
+                    motionMode: state.motionMode,
+                    lipSyncSwitch: state.lipSync,
+                    lipSyncTtsContent: state.lipSync ? state.prompt : '',
+                    soundEffectSwitch: state.soundEffect,
+                    cameraMovement: state.cameraMovement || null
+                };
+
+                let endpoint = '/api/vgen/generate';
+                if (state.mode === 'image' && imgId) {
+                    endpoint = '/api/vgen/generate/image';
+                    payload.imgId = imgId;
+                }
+
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || '提交任务失败');
+                }
+
+                state.taskId = data.data.taskId;
+                showToast('任务已提交，开始生成...', 'success');
+                
+                updateProgress(data.data.progress || 20, '排队中...');
+                startPolling();
+                
+            } catch (err) {
+                showToast(err.message, 'error');
+                setLoading(false);
+                showProgress(false);
+            }
+        }
+
+        async function pollTaskStatus() {
+            if (!state.taskId) return;
+
+            try {
+                const res = await fetch(`/api/vgen/task/${state.taskId}`);
+                const data = await res.json();
+                
+                if (!data.success) return;
+
+                const task = data.data;
+                updateProgress(task.progress, task.pixverseStatusText || '生成中...');
+
+                if (task.status === 'completed') {
+                    stopPolling();
+                    setLoading(false);
+                    showProgress(false);
+                    showResult(task.resultUrl);
+                    showToast('视频生成完成！点击查看', 'success');
+                } else if (task.status === 'failed') {
+                    stopPolling();
+                    setLoading(false);
+                    showProgress(false);
+                    showToast(task.errorMessage || '生成失败', 'error');
+                }
+            } catch (err) {
+                console.error('轮询失败:', err);
+            }
+        }
+
+        function startPolling() {
+            if (state.pollTimer) return;
+            state.pollTimer = setInterval(pollTaskStatus, 3000);
+        }
+
+        function stopPolling() {
+            if (state.pollTimer) {
+                clearInterval(state.pollTimer);
+                state.pollTimer = null;
+            }
+        }
+
+        function initSubmit() {
+            $('#submitBtn').addEventListener('click', submitTask);
+
+            $('#downloadBtn').addEventListener('click', () => {
+                const video = $('#resultVideo');
+                const a = document.createElement('a');
+                a.href = video.src;
+                a.download = `vgen-video-${Date.now()}.mp4`;
+                a.click();
+            });
+
+            $('#copyUrlBtn').addEventListener('click', () => {
+                const url = $('#resultUrlInput').value;
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast('链接已复制', 'success');
+                });
+            });
+
+            $('#openUrlBtn').addEventListener('click', () => {
+                const url = $('#resultUrlInput').value;
+                if (url) {
+                    window.open(url, '_blank');
+                }
+            });
+
+            $('#newTaskBtn').addEventListener('click', () => {
+                hideResult();
+                showProgress(false);
+                state.taskId = null;
+                $('#promptInput').value = '';
+                $('#resultUrlInput').value = '';
+                resetImageUpload();
+            });
+        }
+
+        function initHistory() {
+            $('#historyBtn').addEventListener('click', () => {
+                loadHistory();
+                $('#historyPanel').classList.add('show');
+                $('#historyOverlay').classList.add('show');
+            });
+
+            $('#closeHistory').addEventListener('click', closeHistoryPanel);
+            $('#historyOverlay').addEventListener('click', closeHistoryPanel);
+        }
+
+        function closeHistoryPanel() {
+            $('#historyPanel').classList.remove('show');
+            $('#historyOverlay').classList.remove('show');
+        }
+
+        function groupByDate(tasks) {
+            const groups = {};
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            tasks.forEach(task => {
+                const date = new Date(task.completedAt || task.createdAt);
+                date.setHours(0, 0, 0, 0);
+                let label = '';
+                if (date.getTime() === today.getTime()) {
+                    label = '今天';
+                } else if (date.getTime() === yesterday.getTime()) {
+                    label = '昨天';
+                } else {
+                    label = `${date.getMonth() + 1}月${date.getDate()}日`;
+                }
+                if (!groups[label]) groups[label] = [];
+                groups[label].push(task);
+            });
+            return groups;
+        }
+
+        function init() {
+            initOptionButtons();
+            initModeTabs();
+            initAdvancedToggle();
+            initSwitches();
+            initImageUpload();
+            initSubmit();
+
+            $('#imageUploadArea').classList.add('hidden');
+        }
+
+        init();
+    </script>
 </body>
 </html>
