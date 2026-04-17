@@ -1,338 +1,52 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const schedule = require('node-schedule');
-const { v4: uuidv4 } = require('uuid');
-const lark = require('@larksuiteoapi/node-sdk');
-const config = require('./config');
+const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
-const mysql = require('mysql2/promise');
+const { v4: uuidv4 } = require('uuid');
+
+const config = require('./config');
+const { initDatabase, getPool, query } = require('./src/services/database');
+const { initFeishu, getStatus, initConnection, sendMessage, buildFlowNotificationCard } = require('./src/services/feishu');
+const { validateEmployeeData, validateFlowData, validateTaskData } = require('./src/utils/validators');
+const {
+  getEmployeesFromDB,
+  getEmployeeById,
+  saveEmployeesToDB,
+  deleteEmployeeFromDB,
+  getFlowsFromDB,
+  saveFlowsToDB,
+  deleteFlowFromDB,
+  matchFlowsByPosition
+} = require('./src/models/data');
+const {
+  tasks,
+  saveTaskToDB,
+  updateTaskStatus,
+  deleteTaskFromDB,
+  loadTasksFromDB,
+  cleanupOldTasks,
+  getTask,
+  cancelTask,
+  executePushTask
+} = require('./src/models/task');
 
 const app = express();
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { success: false, error: '请求过于频繁，请稍后再试' }
+});
+app.use('/api/', apiLimiter);
+
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static('uploads'));
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// MySQL 连接池
-let pool;
-async function initDatabase() {
-  pool = mysql.createPool({
-    host: config.database.host,
-    port: config.database.port,
-    user: config.database.user,
-    password: config.database.password,
-    database: config.database.database,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-  });
-
-  // 创建 flowhub_employees 表
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS flowhub_employees (
-      id VARCHAR(36) PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      email VARCHAR(100),
-      hire_date DATE,
-      department VARCHAR(100),
-      position VARCHAR(100),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  // 创建 flowhub_flows 表
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS flowhub_flows (
-      id VARCHAR(20) PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      positions VARCHAR(200),
-      url VARCHAR(500),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  // 迁移旧表结构（移除 tags 和 target 列）
-  try {
-    await pool.query('SELECT tags FROM flowhub_flows LIMIT 1');
-    await pool.query('ALTER TABLE flowhub_flows DROP COLUMN tags, DROP COLUMN target');
-  } catch (err) { /* 列不存在或已删除 */ }
-
-  // 添加 positions 列（如果不存在）
-  try {
-    await pool.query('SELECT positions FROM flowhub_flows LIMIT 1');
-  } catch (err) {
-    await pool.query('ALTER TABLE flowhub_flows ADD COLUMN positions VARCHAR(200) DEFAULT ""');
-  }
-
-  // 创建 flowhub_scheduled_tasks 表
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS flowhub_scheduled_tasks (
-      id VARCHAR(36) PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      target_type VARCHAR(20) DEFAULT 'all',
-      target_department VARCHAR(100),
-      target_users JSON,
-      schedule_time DATETIME NOT NULL,
-      recurrence VARCHAR(20) DEFAULT 'once',
-      status VARCHAR(20) DEFAULT 'pending',
-      result JSON,
-      error_message TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      completed_at DATETIME,
-      INDEX idx_status (status),
-      INDEX idx_completed_at (completed_at),
-      INDEX idx_schedule_time (schedule_time)
-    )
-  `);
-
-  console.log('✓ MySQL 数据库连接池已创建');
-}
-
-// 飞书客户端初始化
-const client = new lark.Client({
-  appId: config.appId,
-  appSecret: config.appSecret,
-  logLevel: lark.LoggerLevel.INFO
-});
-
-// 飞书长连接状态
-let feishuStatus = {
-  connected: false,
-  reconnectAttempts: 0,
-  lastConnected: null
-};
-
-// 定时任务存储
-const tasks = new Map();
-
-// ==================== MySQL 数据库操作 ====================
-
-// 从数据库获取所有员工
-async function getEmployeesFromDB() {
-  try {
-    const [rows] = await pool.query('SELECT * FROM flowhub_employees ORDER BY created_at DESC');
-    return rows;
-  } catch (err) {
-    console.error('获取员工失败:', err.message);
-    return [];
-  }
-}
-
-// 从数据库获取单个员工
-async function getEmployeeById(id) {
-  try {
-    const [rows] = await pool.query('SELECT * FROM flowhub_employees WHERE id = ?', [id]);
-    return rows[0] || null;
-  } catch (err) {
-    console.error('获取员工失败:', err.message);
-    return null;
-  }
-}
-
-// 批量保存员工到数据库 (分批插入，防止占位符超限)
-async function saveEmployeesToDB(flowhub_employees) {
-  if (flowhub_employees.length === 0) return true;
-
-  const chunkSize = 500;
-  try {
-    for (let i = 0; i < flowhub_employees.length; i += chunkSize) {
-      const chunk = flowhub_employees.slice(i, i + chunkSize);
-      const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
-      const values = chunk.flatMap(emp => [
-        emp.id, emp.name, emp.email, emp.hireDate, emp.department, emp.position
-      ]);
-
-      await pool.query(
-        `INSERT INTO flowhub_employees (id, name, email, hire_date, department, position) 
-         VALUES ${placeholders} 
-         ON DUPLICATE KEY UPDATE 
-         name=VALUES(name), email=VALUES(email), hire_date=VALUES(hire_date), department=VALUES(department), position=VALUES(position)`,
-        values
-      );
-    }
-    return true;
-  } catch (err) {
-    console.error('保存员工失败:', err.message);
-    return false;
-  }
-}
-
-// 从数据库删除单个员工
-async function deleteEmployeeFromDB(id) {
-  try {
-    await pool.query('DELETE FROM flowhub_employees WHERE id = ?', [id]);
-    return true;
-  } catch (err) {
-    console.error('删除员工失败:', err.message);
-    return false;
-  }
-}
-
-// 从数据库获取所有流程
-async function getFlowsFromDB() {
-  try {
-    const [rows] = await pool.query('SELECT * FROM flowhub_flows ORDER BY id');
-    return rows;
-  } catch (err) {
-    console.error('获取流程失败:', err.message);
-    return [];
-  }
-}
-
-// 批量保存流程到数据库 (分批插入)
-async function saveFlowsToDB(flowhub_flows) {
-  if (flowhub_flows.length === 0) return true;
-
-  const chunkSize = 500;
-  try {
-    for (let i = 0; i < flowhub_flows.length; i += chunkSize) {
-      const chunk = flowhub_flows.slice(i, i + chunkSize);
-      const placeholders = chunk.map(() => '(?, ?, ?, ?)').join(', ');
-      const values = chunk.flatMap(flow => [
-        flow.id, flow.name, flow.positions || '', flow.url
-      ]);
-
-      await pool.query(
-        `INSERT INTO flowhub_flows (id, name, positions, url) 
-         VALUES ${placeholders} 
-         ON DUPLICATE KEY UPDATE 
-         name=VALUES(name), positions=VALUES(positions), url=VALUES(url)`,
-        values
-      );
-    }
-    return true;
-  } catch (err) {
-    console.error('保存流程失败:', err.message);
-    return false;
-  }
-}
-
-// ==================== 流程匹配逻辑 ====================
-
-// 🟢 性能优化：改为纯同步函数，要求外部一次性传入全量 allFlows 防止 N+1 查询问题
-function matchFlowsByPosition(position, allFlows) {
-  if (!position) return [];
-  const posLower = position.toLowerCase();
-
-  return allFlows.filter(flow => {
-    if (!flow.positions || flow.positions.trim() === '') return false;
-    const keywords = flow.positions.split(',').map(k => k.trim().toLowerCase());
-
-    // 模糊匹配：员工岗位包含关键词 或 关键词包含员工岗位
-    return keywords.some(keyword => {
-      if (!keyword) return false;
-      return posLower.includes(keyword) || keyword.includes(posLower);
-    });
-  });
-}
-
-// ==================== 任务与文件配置 ====================
-
-async function saveTaskToDB(task) {
-  try {
-    await pool.query(
-      `INSERT INTO flowhub_scheduled_tasks (id, name, target_type, target_department, target_users, schedule_time, recurrence, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), schedule_time=VALUES(schedule_time)`, [task.id, task.name, task.targetType || 'all', task.targetDepartment || null,
-    JSON.stringify(task.targetUsers || []), task.scheduleTime, task.recurrence || 'once', task.status || 'pending']
-    );
-    return true;
-  } catch (err) {
-    console.error('保存任务失败:', err.message);
-    return false;
-  }
-}
-
-async function updateTaskStatus(taskId, status, result = null, errorMessage = null) {
-  try {
-    await pool.query(
-      `UPDATE flowhub_scheduled_tasks SET status = ?, result = ?, error_message = ?, completed_at = ? WHERE id = ?`,
-      [status, result ? JSON.stringify(result) : null, errorMessage, new Date(), taskId]
-    );
-    return true;
-  } catch (err) {
-    console.error('更新任务状态失败:', err.message);
-    return false;
-  }
-}
-
-async function deleteTaskFromDB(taskId) {
-  try {
-    await pool.query('DELETE FROM flowhub_scheduled_tasks WHERE id = ?', [taskId]);
-    return true;
-  } catch (err) {
-    console.error('删除任务失败:', err.message);
-    return false;
-  }
-}
-
-async function loadTasksFromDB() {
-  try {
-    const [rows] = await pool.query("SELECT * FROM flowhub_scheduled_tasks WHERE status = 'pending'");
-
-    const safeJsonParse = (str, defaultVal) => {
-      if (!str) return defaultVal;
-      try { return JSON.parse(str); } catch { return defaultVal; }
-    };
-
-    rows.forEach(task => {
-      const scheduleTime = new Date(task.schedule_time);
-      const now = new Date();
-
-      const taskData = {
-        id: task.id,
-        name: task.name,
-        targetType: task.target_type,
-        targetDepartment: task.target_department,
-        targetUsers: safeJsonParse(task.target_users, []),
-        scheduleTime: task.schedule_time,
-        recurrence: task.recurrence,
-        status: task.status,
-        createdAt: task.created_at
-      };
-
-      tasks.set(task.id, taskData);
-
-      if (scheduleTime > now) {
-        schedule.scheduleJob(task.id, scheduleTime, () => {
-          executePushTask(task.id);
-        });
-        console.log(`  - 已恢复任务 "${task.name}"，计划执行时间: ${scheduleTime.toLocaleString()}`);
-      } else {
-        console.log(`  - 任务 "${task.name}" 已过期，立即执行`);
-        executePushTask(task.id);
-      }
-    });
-
-    console.log(`✓ 已恢复 ${rows.length} 个定时任务`);
-    return rows.length;
-  } catch (err) {
-    console.error('加载任务失败:', err.message);
-    return 0;
-  }
-}
-
-async function cleanupOldTasks() {
-  try {
-    const [result] = await pool.query(
-      `DELETE FROM flowhub_scheduled_tasks WHERE status IN ('completed', 'failed') AND completed_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`
-    );
-    if (result.affectedRows > 0) {
-      console.log(`✓ 已清理 ${result.affectedRows} 条历史任务记录`);
-    }
-    return result.affectedRows;
-  } catch (err) {
-    console.error('清理旧任务失败:', err.message);
-    return 0;
-  }
-}
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -340,9 +54,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -351,304 +63,57 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /xlsx|xls|csv/;
     const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    if (ext) {
-      cb(null, true);
-    } else {
-      cb(new Error('只支持 .xlsx, .xls, .csv 文件'));
-    }
+    if (ext) cb(null, true);
+    else cb(new Error('只支持 .xlsx, .xls, .csv 文件'));
   }
 });
 
-// ==================== 飞书长连接 ====================
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-let wsClient = null;
-
-async function initFeishuConnection() {
+app.get('/health', async (req, res) => {
   try {
-    console.log('✓ 飞书应用连接已初始化');
-    feishuStatus.connected = true;
-    feishuStatus.lastConnected = new Date();
-    feishuStatus.reconnectAttempts = 0;
-  } catch (err) {
-    const isNetworkError = err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.response?.status >= 500;
-
-    if (!isNetworkError) {
-      console.log('✓ 飞书应用凭证有效（发送功能正常）');
-      feishuStatus.connected = true;
-      feishuStatus.lastConnected = new Date();
-      feishuStatus.reconnectAttempts = 0;
-    } else {
-      console.error('✗ 飞书连接失败:', err.message);
-      feishuStatus.connected = false;
-
-      if (feishuStatus.reconnectAttempts < 5) {
-        feishuStatus.reconnectAttempts++;
-        console.log(`尝试重连 (${feishuStatus.reconnectAttempts}/5)...`);
-        setTimeout(initFeishuConnection, 10000);
-      }
-    }
-  }
-}
-
-// ==================== 消息发送 ====================
-
-async function sendMessage(receiveId, receiveIdType, msgType, content) {
-  try {
-    const result = await client.im.message.create({
-      params: {
-        receive_id_type: receiveIdType
-      },
-      data: {
-        receive_id: receiveId,
-        msg_type: msgType,
-        content: JSON.stringify(content)
-      }
+    await query('SELECT 1');
+    res.json({
+      status: 'ok',
+      uptime: Math.floor(process.uptime()),
+      database: 'connected',
+      timestamp: new Date().toISOString()
     });
-
-    if (result.code === 0) {
-      console.log(`✓ 消息发送成功: ${receiveId}`);
-      return { success: true, messageId: result.data.message_id };
-    } else {
-      console.error('✗ 消息发送失败:', result.msg);
-      return { success: false, error: result.msg };
-    }
   } catch (err) {
-    console.error('✗ 发送消息异常:', err.message);
-    return { success: false, error: err.message };
-  }
-}
-
-function buildFlowNotificationCard(employee, flowhub_flows) {
-  const flowItems = flowhub_flows.map(f =>
-    `•[${f.name}](${f.url})`
-  ).join('\n\n');
-
-  return {
-    header: {
-      title: {
-        tag: 'plain_text',
-        content: '📋 入职推送通知——流程清单'
-      },
-      template: 'blue'
-    },
-    elements: [
-      {
-        tag: 'div',
-        text: {
-          tag: 'lark_md',
-          content: `您好 **${employee.name}** 👋\n\n欢迎加入追觅个护大家庭！为了帮助您快速融入团队并顺利开展工作，请您关注以下流程：`
-        }
-      },
-      {
-        tag: 'div',
-        text: {
-          tag: 'lark_md',
-          content: flowItems
-        }
-      },
-      {
-        tag: 'action',
-        actions: [
-          {
-            tag: 'button',
-            text: {
-              tag: 'plain_text',
-              content: '查看全部流程 →'
-            },
-            type: 'primary',
-            url: 'https://dreametech.feishu.cn/wiki/X3EUwOnyCiwUQAkKZ0CchkGBnEb'
-          }
-        ]
-      },
-      {
-        tag: 'div',
-        text: {
-          tag: 'lark_md',
-          content: `---\n💡以上，如有任何疑问或建议，请随时联系各系统负责人：[追觅个护BG IT找人指引](https://dreametech.feishu.cn/wiki/ZWv7wXexdiecl9k98pVcbnl0nnb)`
-        }
-      }
-    ]
-  };
-}
-
-// ==================== 定时任务执行 ====================
-
-async function executePushTask(taskId) {
-  const task = tasks.get(taskId);
-  if (!task || task.status === 'completed' || task.status === 'failed') {
-    console.log(`任务 ${taskId} 不存在或已结束`);
-    return null;
-  }
-
-  console.log(`执行推送任务: ${task.name}`);
-
-  try {
-    const flowhub_employees = await getEmployeesFromDB();
-
-    let targetEmployees =[];
-    if (task.targetType === 'all') {
-      targetEmployees = flowhub_employees;
-    } else if (task.targetType === 'department' && task.targetDepartment) {
-      targetEmployees = flowhub_employees.filter(e => e.department === task.targetDepartment);
-    } else if (task.targetType === 'custom' && task.targetUsers) {
-      targetEmployees = flowhub_employees.filter(e => task.targetUsers.includes(e.id));
-    }
-
-    if (targetEmployees.length === 0) {
-      console.log('没有目标员工，跳过发送');
-      task.status = 'failed';
-      task.completedAt = new Date();
-      task.result = { success: 0, total: 0, details:[] };
-      // 记录失败原因
-      await updateTaskStatus(taskId, 'failed', task.result, '没有匹配的目标员工，发送已跳过');
-      return task.result;
-    }
-
-    const allFlows = await getFlowsFromDB();
-    const results =[];
-
-    const chunkSize = 10; 
-    for (let i = 0; i < targetEmployees.length; i += chunkSize) {
-      const chunk = targetEmployees.slice(i, i + chunkSize);
-
-      const chunkPromises = chunk.map(async (employee) => {
-        const employeeFlows = matchFlowsByPosition(employee.position, allFlows);
-
-        if (employeeFlows.length === 0) {
-          return { employeeId: employee.id, employeeName: employee.name, email: employee.email, success: false, error: '未匹配到任何流程' };
-        }
-
-        const card = buildFlowNotificationCard({ name: employee.name }, employeeFlows);
-        const result = await sendMessage(employee.email, 'email', 'interactive', card);
-
-        return {
-          employeeId: employee.id,
-          employeeName: employee.name,
-          email: employee.email,
-          success: result.success,
-          error: result.error || null,
-          messageId: result.messageId || null
-        };
-      });
-
-      const chunkResults = await Promise.all(chunkPromises);
-      results.push(...chunkResults);
-
-      if (i + chunkSize < targetEmployees.length) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-    }
-
-    const successCount = results.filter(r => r.success).length;
-    const finalStatus = successCount > 0 ? 'completed' : 'failed';
-
-    console.log(`任务 ${task.name} 执行结束: 状态[${finalStatus}], 成功 ${successCount}/${results.length}`);
-
-    task.status = finalStatus;
-    task.completedAt = new Date();
-    task.result = { success: successCount, total: results.length, details: results };
-
-    // ✨ 提取失败原因 ✨
-    let errorMessage = null;
-    if (finalStatus === 'failed') {
-      const failedDetail = results.find(r => !r.success && r.error);
-      errorMessage = failedDetail ? failedDetail.error : '全部推送失败，请检查配置或网络';
-    }
-
-    // 存入数据库时传入 errorMessage
-    await updateTaskStatus(taskId, finalStatus, task.result, errorMessage);
-
-    if (task.recurrence === 'once') {
-      const successEmployeeIds = results
-        .filter(r => r.success && r.employeeId)
-        .map(r => r.employeeId);
-
-      if (successEmployeeIds.length > 0) {
-        try {
-          await pool.query('DELETE FROM flowhub_employees WHERE id IN (?)', [successEmployeeIds]);
-          console.log(`单次任务：已批量删除 ${successEmployeeIds.length} 位已推送员工`);
-        } catch (err) {
-          console.error('批量删除推送成功的员工失败:', err);
-        }
-      }
-      tasks.delete(taskId);
-    }
-
-    if (task.recurrence !== 'once') {
-      await scheduleNextRecurrence(task);
-    }
-
-    return task.result;
-
-  } catch (err) {
-    // 捕获未知的代码异常 / 数据库崩溃，并将异常记录进失败原因
-    console.error(`任务 ${task.name} 执行异常:`, err);
-    task.status = 'failed';
-    task.completedAt = new Date();
-    const errMsg = err.message || '内部执行异常';
-    await updateTaskStatus(taskId, 'failed', null, errMsg);
-    return null;
-  }
-}
-
-async function scheduleNextRecurrence(task) {
-  const baseTime = new Date(task.scheduleTime);
-  let nextDate;
-
-  if (task.recurrence === 'daily') {
-    nextDate = new Date(baseTime.getTime() + 24 * 60 * 60 * 1000);
-  } else if (task.recurrence === 'weekly') {
-    nextDate = new Date(baseTime.getTime() + 7 * 24 * 60 * 60 * 1000);
-  } else if (task.recurrence === 'monthly') {
-    nextDate = new Date(baseTime);
-    nextDate.setMonth(nextDate.getMonth() + 1);
-  }
-
-  if (nextDate) {
-    const newTask = {
-      ...task,
-      id: uuidv4(),
-      scheduleTime: nextDate,
-      status: 'pending',
-      createdAt: new Date()
-    };
-
-    await saveTaskToDB(newTask);
-    tasks.set(newTask.id, newTask);
-
-    schedule.scheduleJob(newTask.id, nextDate, () => {
-      executePushTask(newTask.id);
+    res.status(503).json({
+      status: 'error',
+      uptime: Math.floor(process.uptime()),
+      database: 'disconnected',
+      error: err.message
     });
-
-    console.log(`已安排下次执行: ${nextDate.toLocaleString()}`);
   }
-}
-
-// ==================== API 路由 ====================
+});
 
 app.get('/api/flowhub/status', (req, res) => {
+  const status = getStatus();
   res.json({
     success: true,
     data: {
-      connected: feishuStatus.connected,
-      lastConnected: feishuStatus.lastConnected,
-      reconnectAttempts: feishuStatus.reconnectAttempts
+      connected: status.connected,
+      lastConnected: status.lastConnected,
+      reconnectAttempts: status.reconnectAttempts
     }
   });
 });
 
-// 从数据库查询统计数据，保证准确性
 app.get('/api/flowhub/dashboard/stats', async (req, res) => {
   try {
-    const [flowRows] = await pool.query('SELECT COUNT(*) as count FROM flowhub_flows');
-    const [employeeRows] = await pool.query('SELECT COUNT(*) as count FROM flowhub_employees');
-    const [taskTotalRows] = await pool.query('SELECT COUNT(*) as count FROM flowhub_scheduled_tasks');
-    const [taskPendingRows] = await pool.query("SELECT COUNT(*) as count FROM flowhub_scheduled_tasks WHERE status = 'pending'");
-    const [taskCompletedRows] = await pool.query("SELECT COUNT(*) as count FROM flowhub_scheduled_tasks WHERE status = 'completed'");
+    const [flowRows] = await query('SELECT COUNT(*) as count FROM flowhub_flows');
+    const [employeeRows] = await query('SELECT COUNT(*) as count FROM flowhub_employees');
+    const [taskTotalRows] = await query('SELECT COUNT(*) as count FROM flowhub_scheduled_tasks');
+    const [taskPendingRows] = await query("SELECT COUNT(*) as count FROM flowhub_scheduled_tasks WHERE status = 'pending'");
+    const [taskCompletedRows] = await query("SELECT COUNT(*) as count FROM flowhub_scheduled_tasks WHERE status = 'completed'");
 
     res.json({
       success: true,
@@ -668,10 +133,9 @@ app.get('/api/flowhub/dashboard/stats', async (req, res) => {
 app.get('/api/flowhub/flowhub_employees', async (req, res) => {
   try {
     const flowhub_employees = await getEmployeesFromDB();
-    const allFlows = await getFlowsFromDB(); // 🟢 一次性拉取全量，避免 N+1
+    const allFlows = await getFlowsFromDB();
 
     const flowhub_employeesWithFlows = flowhub_employees.map(emp => {
-      // 传递 allFlows 纯内存比对
       const matchedFlows = matchFlowsByPosition(emp.position, allFlows);
       return {
         id: emp.id,
@@ -685,16 +149,12 @@ app.get('/api/flowhub/flowhub_employees', async (req, res) => {
       };
     });
 
-    res.json({
-      success: true,
-      data: flowhub_employeesWithFlows
-    });
+    res.json({ success: true, data: flowhub_employeesWithFlows });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 上传员工名单 (基于邮箱做覆盖去重，保证垃圾文件被清理)
 app.post('/api/flowhub/flowhub_employees/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: '请上传文件' });
@@ -707,8 +167,7 @@ app.post('/api/flowhub/flowhub_employees/upload', upload.single('file'), async (
 
     if (data.length < 2) throw new Error('文件内容为空或格式不正确');
 
-    // 🟢 性能优化：只查询需要的两列（email 和 id），大大节约大数据量下的内存分配
-    const [existingRows] = await pool.query('SELECT id, email FROM flowhub_employees WHERE email IS NOT NULL AND email != ""');
+    const [existingRows] = await query('SELECT id, email FROM flowhub_employees WHERE email IS NOT NULL AND email != ""');
     const emailToIdMap = new Map(existingRows.map(e => [e.email, e.id]));
 
     const newEmployees = [];
@@ -720,10 +179,9 @@ app.post('/api/flowhub/flowhub_employees/upload', upload.single('file'), async (
       const email = String(row[1] || '').trim();
       let hireDate = String(row[2] || '').trim();
 
-      // 兼容解析 Excel 日期天数序列
       if (hireDate && !isNaN(hireDate)) {
         const days = parseFloat(hireDate);
-        if (days > 20000) { // 大致是 1954 年之后的日期
+        if (days > 20000) {
           hireDate = new Date(Math.round((days - 25569) * 86400 * 1000)).toISOString().split('T')[0];
         }
       }
@@ -732,10 +190,20 @@ app.post('/api/flowhub/flowhub_employees/upload', upload.single('file'), async (
       const position = String(row[4] || '').trim();
 
       if (name) {
-        // 如果邮箱存在，重用原有ID进行更新，否则生成新ID
+        const validation = validateEmployeeData({ name, email, department, position });
+        if (!validation.valid) {
+          console.warn(`跳过无效员工数据 [${name}]: ${validation.error}`);
+          continue;
+        }
+
         const empId = emailToIdMap.get(email) || uuidv4();
         newEmployees.push({
-          id: empId, name, email, hireDate, department, position
+          id: empId,
+          name: name.trim(),
+          email: email.trim(),
+          hireDate,
+          department: department.trim(),
+          position: position.trim()
         });
       }
     }
@@ -746,16 +214,12 @@ app.post('/api/flowhub/flowhub_employees/upload', upload.single('file'), async (
     res.json({
       success: true,
       message: `成功导入/更新 ${newEmployees.length} 条员工记录`,
-      data: {
-        total: flowhub_employees.length,
-        added: newEmployees.length
-      }
+      data: { total: flowhub_employees.length, added: newEmployees.length }
     });
   } catch (err) {
     console.error('解析文件失败:', err);
     res.status(500).json({ success: false, error: '解析文件失败: ' + err.message });
   } finally {
-    // 确保无论成功还是报错，上传的临时文件都会被清理
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
@@ -772,16 +236,13 @@ app.delete('/api/flowhub/flowhub_employees/:id', async (req, res) => {
   res.json({ success: true, message: '员工已删除' });
 });
 
-// 获取员工匹配的流程
 app.get('/api/flowhub/flowhub_employees/:id/flowhub_flows', async (req, res) => {
   const { id } = req.params;
   const employee = await getEmployeeById(id);
-
   if (!employee) {
     return res.status(404).json({ success: false, error: '员工不存在' });
   }
 
-  // 🟢 使用优化后的同步函数逻辑
   const allFlows = await getFlowsFromDB();
   const matchedFlows = matchFlowsByPosition(employee.position, allFlows);
 
@@ -795,7 +256,7 @@ app.get('/api/flowhub/flowhub_flows', async (req, res) => {
 
 app.get('/api/flowhub/departments', async (req, res) => {
   try {
-    const [rows] = await pool.query(
+    const [rows] = await query(
       'SELECT DISTINCT department FROM flowhub_employees WHERE department IS NOT NULL AND department != "" ORDER BY department'
     );
     res.json({ success: true, data: rows.map(r => r.department) });
@@ -804,7 +265,6 @@ app.get('/api/flowhub/departments', async (req, res) => {
   }
 });
 
-// 上传流程清单 (提前查询一次基础ID并在内存累加，防止相同ID被不断覆盖)
 app.post('/api/flowhub/flowhub_flows/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: '请上传文件' });
@@ -819,7 +279,7 @@ app.post('/api/flowhub/flowhub_flows/upload', upload.single('file'), async (req,
 
     let nextNum = 1;
     try {
-      const [rows] = await pool.query('SELECT id FROM flowhub_flows ORDER BY id DESC LIMIT 1');
+      const [rows] = await query('SELECT id FROM flowhub_flows ORDER BY id DESC LIMIT 1');
       if (rows.length > 0) {
         nextNum = parseInt(rows[0].id.replace('P-', '')) + 1;
       }
@@ -837,14 +297,20 @@ app.post('/api/flowhub/flowhub_flows/upload', upload.single('file'), async (req,
       const url = String(row[2] || '').trim();
 
       if (name) {
+        const validation = validateFlowData({ name, url });
+        if (!validation.valid) {
+          console.warn(`跳过无效流程数据 [${name}]: ${validation.error}`);
+          continue;
+        }
+
         const flowId = `P-${String(nextNum).padStart(3, '0')}`;
         nextNum++;
 
         newFlows.push({
           id: flowId,
-          name,
-          positions: positions || '',
-          url: url || ''
+          name: name.trim(),
+          positions: positions.trim(),
+          url: url.trim()
         });
       }
     }
@@ -855,10 +321,7 @@ app.post('/api/flowhub/flowhub_flows/upload', upload.single('file'), async (req,
     res.json({
       success: true,
       message: `成功导入 ${newFlows.length} 条流程记录`,
-      data: {
-        total: flowhub_flows.length,
-        added: newFlows.length
-      }
+      data: { total: flowhub_flows.length, added: newFlows.length }
     });
   } catch (err) {
     console.error('解析文件失败:', err);
@@ -873,14 +336,12 @@ app.post('/api/flowhub/flowhub_flows/upload', upload.single('file'), async (req,
 app.delete('/api/flowhub/flowhub_flows/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await pool.query('DELETE FROM flowhub_flows WHERE id = ?', [id]);
+    await deleteFlowFromDB(id);
     res.json({ success: true, message: '流程已删除' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
-// ==================== 辅助函数 ====================
 
 function getTargetDisplay(targetType, targetDepartment, targetUsers) {
   if (targetType === 'all') return '全部员工';
@@ -893,7 +354,7 @@ function getTargetDisplay(targetType, targetDepartment, targetUsers) {
 }
 
 function getRecurrenceDisplay(recurrence) {
-  const map = { 'once': '一次性', 'daily': '每天', 'weekly': '每周', 'monthly': '每月' };
+  const map = { 'once': '一次性', 'daily': '每天', 'weekly': '每���', 'monthly': '每月' };
   return map[recurrence] || recurrence;
 }
 
@@ -903,12 +364,12 @@ app.get('/api/flowhub/tasks', async (req, res) => {
   const offset = (page - 1) * pageSize;
 
   try {
-    const [rows] = await pool.query(
+    const [rows] = await query(
       'SELECT * FROM flowhub_scheduled_tasks ORDER BY created_at DESC LIMIT ? OFFSET ?',
       [pageSize, offset]
     );
 
-    const [countResult] = await pool.query('SELECT COUNT(*) as total FROM flowhub_scheduled_tasks');
+    const [countResult] = await query('SELECT COUNT(*) as total FROM flowhub_scheduled_tasks');
     const total = countResult[0].total;
 
     const safeJsonParse = (str, defaultVal) => {
@@ -952,14 +413,19 @@ app.get('/api/flowhub/tasks', async (req, res) => {
 app.post('/api/flowhub/tasks', async (req, res) => {
   const { name, targetType, targetDepartment, targetUsers, scheduleTime, recurrence } = req.body;
 
-  if (!name || !scheduleTime) {
-    return res.status(400).json({ success: false, error: '缺少必要参数' });
+  const validation = validateTaskData({ name, scheduleTime, recurrence });
+  if (!validation.valid) {
+    return res.status(400).json({ success: false, error: validation.error });
   }
 
   const scheduledDate = new Date(scheduleTime);
   if (isNaN(scheduledDate.getTime())) {
     return res.status(400).json({ success: false, error: '无效的时间格式' });
   }
+
+  // if (scheduledDate < new Date() && recurrence === 'once') {
+  //   return res.status(400).json({ success: false, error: '不能创建过去的定时任务' });
+  // }
 
   const taskId = uuidv4();
   const task = {
@@ -978,6 +444,7 @@ app.post('/api/flowhub/tasks', async (req, res) => {
   tasks.set(taskId, task);
 
   if (scheduledDate > new Date()) {
+    const schedule = require('node-schedule');
     schedule.scheduleJob(taskId, scheduledDate, () => {
       executePushTask(taskId);
     });
@@ -993,11 +460,7 @@ app.post('/api/flowhub/tasks', async (req, res) => {
 app.delete('/api/flowhub/tasks/:id', async (req, res) => {
   const { id } = req.params;
 
-  const job = schedule.scheduledJobs[id];
-  if (job) job.cancel();
-
-  tasks.delete(id);
-
+  cancelTask(id);
   const deleteResult = await deleteTaskFromDB(id);
   if (!deleteResult) {
     return res.status(500).json({ success: false, error: '删除任务失败' });
@@ -1008,7 +471,7 @@ app.delete('/api/flowhub/tasks/:id', async (req, res) => {
 
 app.post('/api/flowhub/tasks/:id/trigger', async (req, res) => {
   const { id } = req.params;
-  const task = tasks.get(id);
+  const task = getTask(id);
 
   if (!task) {
     return res.status(404).json({ success: false, error: '任务不存在' });
@@ -1018,12 +481,11 @@ app.post('/api/flowhub/tasks/:id/trigger', async (req, res) => {
   res.json({ success: true, message: '任务已执行完毕', data: result });
 });
 
-// ==================== 启动服务器 ====================
-
 const PORT = config.port;
 
 async function startServer() {
-  await initDatabase();
+  await initDatabase(config);
+  initFeishu(config);
 
   const flowList = await getFlowsFromDB();
   console.log(`✓ 已加载 ${flowList.length} 条流程记录`);
@@ -1041,11 +503,12 @@ async function startServer() {
     console.log('');
 
     console.log('  正在连接飞书机器人...');
-    initFeishuConnection();
+    initConnection();
 
     console.log('');
     console.log('  API 接口:');
-    console.log(`    GET  /api/flowhub/status      - 获取连接状态`);
+    console.log(`    GET  /health                      - 健康检查`);
+    console.log(`    GET  /api/flowhub/status          - 获取连接状态`);
     console.log(`    GET  /api/flowhub/flowhub_employees  - 获取员工列表`);
     console.log(`    POST /api/flowhub/flowhub_employees/upload - 上传员工名单`);
     console.log(`    GET  /api/flowhub/flowhub_flows     - 获取流程列表`);
