@@ -69,6 +69,7 @@ description: 飞书入职流程推送管理技能。当用户需要通过对话�
 - 流程列表：`GET /api/flowhub/flowhub_flows`
 - 任务列表：`GET /api/flowhub/tasks`
 - 飞书状态：`GET /api/flowhub/status`
+- 健康检查：`GET /health`
 
 ## 参数提取规则
 

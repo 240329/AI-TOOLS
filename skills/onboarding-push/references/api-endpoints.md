@@ -226,6 +226,23 @@ POST /api/flowhub/tasks/:id/trigger
 
 ## 系统状态
 
+## 系统状态
+
+### 健康检查
+```
+GET /health
+```
+
+响应:
+```json
+{
+  "status": "ok",
+  "uptime": 3600,
+  "database": "connected",
+  "timestamp": "2026-04-17T12:00:00.000Z"
+}
+```
+
 ### 获取飞书连接状态
 ```
 GET /api/flowhub/status
