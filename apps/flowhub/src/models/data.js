@@ -113,6 +113,10 @@ function matchFlowsByPosition(position, allFlows) {
     if (!flow.positions || flow.positions.trim() === '') return false;
     const keywords = flow.positions.split(',').map(k => k.trim().toLowerCase());
 
+    const universalKeywords = ['所有', '全员', '通用', 'all', 'everyone'];
+    const isUniversal = keywords.some(k => universalKeywords.includes(k));
+    if (isUniversal) return true;
+
     return keywords.some(keyword => {
       if (!keyword) return false;
       return posLower.includes(keyword) || keyword.includes(posLower);
