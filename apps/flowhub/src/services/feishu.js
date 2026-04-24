@@ -90,7 +90,7 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
     header: {
       title: {
         tag: 'plain_text',
-        content: '📋 入职推送通知——流程清单'
+        content: '📋 个护流程小助手'
       },
       template: 'blue'
     },
