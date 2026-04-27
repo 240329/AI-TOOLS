@@ -96,9 +96,9 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
     categoryMap[category].push(`•[${f.name}](${f.url})`);
   });
 
-  const supportFlowItems = categoryMap['支撑类'].join('\n') || '无';
-  const enableFlowItems = categoryMap['使能类'].join('\n') || '无';
-  const operationFlowItems = categoryMap['运营类'].join('\n') || '无';
+  const supportFlowItems = categoryMap['支撑类'].join('\n') || '暂无';
+  const enableFlowItems = categoryMap['使能类'].join('\n') || '暂无';
+  const operationFlowItems = categoryMap['运营类'].join('\n') || '暂无';
 
   return {
     header: {
