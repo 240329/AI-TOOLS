@@ -160,12 +160,10 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
       },
       {
         tag: 'div',
-        elements: [
-          {
-            tag: 'lark_md',
-            content: `💡 如有任何疑问或建议，请随时联系各系统负责人：[追觅个护BG IT找人指引](https://dreametech.feishu.cn/wiki/ZWv7wXexdiecl9k98pVcbnl0nnb)`
-          }
-        ]
+        text: {
+          tag: 'lark_md',
+          content: `💡 如有任何疑问或建议，请随时联系各系统负责人：[追觅个护BG IT找人指引](https://dreametech.feishu.cn/wiki/ZWv7wXexdiecl9k98pVcbnl0nnb)`
+        }
       }
     ]
   };
