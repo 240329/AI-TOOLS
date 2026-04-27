@@ -96,9 +96,15 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
     categoryMap[category].push(`•[${f.name}](${f.url})`);
   });
 
-  const supportRows = categoryMap['支撑类'].map(item => ({ flow_name: item }));
-  const enableRows = categoryMap['使能类'].map(item => ({ flow_name: item }));
-  const operationRows = categoryMap['运营类'].map(item => ({ flow_name: item }));
+  const supportRows = categoryMap['支撑类'].length > 0 
+    ? categoryMap['支撑类'].map(item => ({ flow_name: item }))
+    : [{ flow_name: '流程整理中，敬请期待！' }];
+  const enableRows = categoryMap['使能类'].length > 0
+    ? categoryMap['使能类'].map(item => ({ flow_name: item }))
+    : [{ flow_name: '流程整理中，敬请期待！' }];
+  const operationRows = categoryMap['运营类'].length > 0
+    ? categoryMap['运营类'].map(item => ({ flow_name: item }))
+    : [{ flow_name: '流程整理中，敬请期待！' }];
 
   return {
     header: {
