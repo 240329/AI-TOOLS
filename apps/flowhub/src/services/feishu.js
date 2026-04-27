@@ -82,15 +82,29 @@ async function sendMessage(receiveId, receiveIdType, msgType, content) {
 }
 
 function buildFlowNotificationCard(employee, flowhub_flows) {
-  const flowItems = flowhub_flows.map(f =>
-    `•[${f.name}](${f.url})`
-  ).join('\n\n');
+  const categoryMap = {
+    '支撑类': [],
+    '使能类': [],
+    '运营类': []
+  };
+
+  flowhub_flows.forEach(f => {
+    const category = f.category || '支撑类';
+    if (!categoryMap[category]) {
+      categoryMap[category] = [];
+    }
+    categoryMap[category].push(`•[${f.name}](${f.url})`);
+  });
+
+  const supportFlowItems = categoryMap['支撑类'].join('\n') || '无';
+  const enableFlowItems = categoryMap['使能类'].join('\n') || '无';
+  const operationFlowItems = categoryMap['运营类'].join('\n') || '无';
 
   return {
     header: {
       title: {
         tag: 'plain_text',
-        content: '📋 个护BG流程小助手'
+        content: '📋 个护流程小助手'
       },
       template: 'blue'
     },
@@ -99,16 +113,37 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
         tag: 'div',
         text: {
           tag: 'lark_md',
-          content: `您好 **${employee.name}** 👋\n\n欢迎加入追觅个护大家庭！为了帮助您快速融入团队并顺利开展工作，请您关注以下流程：`
+          content: `您好 **${employee.name}** 👋\n欢迎加入追觅个护大家庭！为了帮助您快速融入团队并顺利开展工作，请关注以下三类核心流程：`
         }
       },
+      { tag: 'hr' },
       {
         tag: 'div',
-        text: {
-          tag: 'lark_md',
-          content: flowItems
-        }
+        fields: [
+          {
+            is_short: false,
+            text: {
+              tag: 'lark_md',
+              content: `**⚙️ 支撑类流程**\n${supportFlowItems}`
+            }
+          },
+          {
+            is_short: false,
+            text: {
+              tag: 'lark_md',
+              content: `\n**🚀 使能类流程**\n${enableFlowItems}`
+            }
+          },
+          {
+            is_short: false,
+            text: {
+              tag: 'lark_md',
+              content: `\n**📊 运营类流程**\n${operationFlowItems}`
+            }
+          }
+        ]
       },
+      { tag: 'hr' },
       {
         tag: 'action',
         actions: [
@@ -116,7 +151,7 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
             tag: 'button',
             text: {
               tag: 'plain_text',
-              content: '查看全部流程 →'
+              content: '查看全部流程详情 →'
             },
             type: 'primary',
             url: 'https://dreametech.feishu.cn/wiki/X3EUwOnyCiwUQAkKZ0CchkGBnEb'
@@ -124,11 +159,13 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
         ]
       },
       {
-        tag: 'div',
-        text: {
-          tag: 'lark_md',
-          content: `---\n💡以上，如有任何疑问或建议，请随时联系各系统负责人：[追觅个护BG IT找人指引](https://dreametech.feishu.cn/wiki/ZWv7wXexdiecl9k98pVcbnl0nnb)`
-        }
+        tag: 'note',
+        elements: [
+          {
+            tag: 'lark_md',
+            content: `💡 如有任何疑问或建议，请随时联系各系统负责人：[追觅个护BG IT找人指引](https://dreametech.feishu.cn/wiki/ZWv7wXexdiecl9k98pVcbnl0nnb)`
+          }
+        ]
       }
     ]
   };
