@@ -5,18 +5,22 @@ const http = require('http');
 const args = process.argv.slice(2);
 const dataStartIdx = args.indexOf('--data');
 if (dataStartIdx === -1) {
-  console.error('用法: node upload-flows.js --data "流程名称|适配岗位|飞书文档链接" ...');
-  console.error('示例: node upload-flows.js --data "合同申请|SAP,OA|https://dreametech.feishu.cn/wiki/xxx"');
+  console.error('用法: node upload-flows.js --data "流程名称|适配岗位|飞书文档链接|类别" ...');
+  console.error('示例: node upload-flows.js --data "合同申请|SAP,OA|https://dreametech.feishu.cn/wiki/xxx|通用流程"');
+  console.error('类别可选: 通用流程/HR/IT/财务/行政 等');
   process.exit(1);
 }
 
 const rows = args.slice(dataStartIdx + 1).filter(a => !a.startsWith('--'));
 const flows = rows.map(row => {
   const parts = row.split('|');
+  if (parts.length === 3) {
+    parts.push('');
+  }
   return parts;
 });
 
-const data = [['流程名称', '适配岗位', '飞书文档链接'], ...flows];
+const data = [['流程名称', '适配岗位', '飞书文档链接', '类别'], ...flows];
 
 const ws = XLSX.utils.aoa_to_sheet(data);
 const wb = XLSX.utils.book_new();
@@ -58,7 +62,7 @@ const req = http.request(options, (res) => {
       console.log(`新增: ${result.data.added}, 总数: ${result.data.total}`);
       if (result.data.parsed) {
         console.log('解析结果:');
-        result.data.parsed.forEach(f => console.log(`  - ${f.id}: ${f.name} | ${f.positions} | ${f.url}`));
+        result.data.parsed.forEach(f => console.log(`  - ${f.id}: ${f.name} | ${f.positions} | ${f.url} | ${f.category || ''}`));
       }
     }
     fs.unlinkSync('flows.xlsx');

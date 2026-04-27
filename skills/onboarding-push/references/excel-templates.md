@@ -46,21 +46,23 @@
 | 列号 | 列名 | 必填 | 说明 | 示例 |
 |------|------|------|------|------|
 | A | 流程名称 | 是 | 流程文档标题 | 新员工入职指引 |
-| B | 适配岗位 | 是 | 适用岗位关键词，逗号分隔 | 新员工,IT |
+| B | 适配岗位 | 是 | 适用岗位关键词，逗号分隔，填"所有"匹配全员 | 新员工,IT,所有 |
 | C | 飞书链接 | 是 | 飞书文档URL | https://feishu.cn/wiki/xxx |
+| D | 类别 | 否 | 流程分类 | 通用流程,HR,IT,财务,行政 |
 
 ### 示例数据
 
-| 流程名称 | 适配岗位 | 飞书链接 |
-|----------|----------|----------|
-| 新员工入职指引 | 新员工 | https://test.feishu.cn/wiki/It8JwkPRBiUKC8keviycSo9on6g |
-| 研发中心权限开通规范 | 研发,SAP,测试,前端,后端 | https://test.feishu.cn/wiki/NzKtweCuoitS2lkhRkXcDURTnCd |
-| 企业文化建设指南 | 全体员工 | https://test.feishu.cn/wiki/LPyAwqfoJiotDdkejtMcKKkNnfg |
-| 考勤与办公设备领用 | 新员工 | https://test.feishu.cn/wiki/LPyAwqfoJiotDdkejtMcKKkNnfg |
-| 系统账号激活流程 | 新员工,IT | https://test.feishu.cn/wiki/LPyAwqfoJiotDdkejtMcKKkNnfg |
+| 流程名称 | 适配岗位 | 飞书链接 | 类别 |
+|----------|----------|----------|------|
+| 新员工入职指引 | 新员工 | https://test.feishu.cn/wiki/It8JwkPRBiUKC8keviycSo9on6g | 通用流程 |
+| 研发中心权限开通规范 | 研发,SAP,测试,前端,后端 | https://test.feishu.cn/wiki/NzKtweCuoitS2lkhRkXcDURTnCd | IT |
+| 企业文化建设指南 | 所有 | https://test.feishu.cn/wiki/LPyAwqfoJiotDdkejtMcKKkNnfg | 通用流程 |
+| 考勤与办公设备领用 | 新员工 | https://test.feishu.cn/wiki/LPyAwqfoJiotDdkejtMcKKkNnfg | 行政 |
+| 系统账号激活流程 | 新员工,IT | https://test.feishu.cn/wiki/LPyAwqfoJiotDdkejtMcKKkNnfg | IT |
 
 ### 岗位匹配规则
 - 多个岗位用逗号分隔
+- 填"所有"可匹配全员（支持：所有/全员/通用/all/everyone）
 - 系统使用模糊匹配：员工岗位包含关键词或关键词包含员工岗位
 - 建议使用常见岗位名称：研发、SAP、测试、前端、后端、产品、运营、设计、HR、财务等
 
