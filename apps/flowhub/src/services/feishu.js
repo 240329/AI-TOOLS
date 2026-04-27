@@ -113,7 +113,7 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
         tag: 'div',
         text: {
           tag: 'lark_md',
-          content: `您好 **${employee.name}** 👋\n欢迎加入追觅个护大家庭！为了帮助您快速融入团队并顺利开展工作，请关注以下三类核心流程：`
+          content: `您好 **${employee.name}** 👋\n\n欢迎加入追觅个护大家庭！为了帮助您快速融入团队并顺利开展工作，请关注以下流程：`
         }
       },
       { tag: 'hr' },
