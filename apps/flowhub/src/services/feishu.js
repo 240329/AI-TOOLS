@@ -159,7 +159,7 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
         ]
       },
       {
-        tag: 'note',
+        tag: 'div',
         elements: [
           {
             tag: 'lark_md',
