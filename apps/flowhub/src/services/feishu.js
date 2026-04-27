@@ -125,7 +125,6 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
       { tag: 'hr' },
       {
         tag: 'table',
-        page_size: 10,
         header_style: {
           text_align: 'left',
           background_style: 'grey'
@@ -141,7 +140,6 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
       },
       {
         tag: 'table',
-        page_size: 10,
         header_style: {
           text_align: 'left',
           background_style: 'grey'
@@ -157,7 +155,6 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
       },
       {
         tag: 'table',
-        page_size: 10,
         header_style: {
           text_align: 'left',
           background_style: 'grey'
