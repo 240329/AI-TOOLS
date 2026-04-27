@@ -104,7 +104,7 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
     header: {
       title: {
         tag: 'plain_text',
-        content: '📋 个护流程小助手'
+        content: '📋 个护BG流程小助手'
       },
       template: 'blue'
     },
