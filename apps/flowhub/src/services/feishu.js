@@ -96,9 +96,9 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
     categoryMap[category].push(`•[${f.name}](${f.url})`);
   });
 
-  const supportFlowItems = categoryMap['支撑类'].join('\n\n') || '暂无';
-  const enableFlowItems = categoryMap['使能类'].join('\n\n') || '暂无';
-  const operationFlowItems = categoryMap['运营类'].join('\n\n') || '暂无';
+  const supportRows = categoryMap['支撑类'].map(item => ({ flow_name: item }));
+  const enableRows = categoryMap['使能类'].map(item => ({ flow_name: item }));
+  const operationRows = categoryMap['运营类'].map(item => ({ flow_name: item }));
 
   return {
     header: {
@@ -118,30 +118,52 @@ function buildFlowNotificationCard(employee, flowhub_flows) {
       },
       { tag: 'hr' },
       {
-        tag: 'div',
-        fields: [
+        tag: 'table',
+        page_size: 10,
+        header_style: {
+          text_align: 'left',
+          background_style: 'grey'
+        },
+        columns: [
           {
-            is_short: false,
-            text: {
-              tag: 'lark_md',
-              content: `**⚙️ 支撑类流程**\n${supportFlowItems}`
-            }
-          },
-          {
-            is_short: false,
-            text: {
-              tag: 'lark_md',
-              content: `\n**🚀 使能类流程**\n${enableFlowItems}`
-            }
-          },
-          {
-            is_short: false,
-            text: {
-              tag: 'lark_md',
-              content: `\n**📊 运营类流程**\n${operationFlowItems}`
-            }
+            name: 'flow_name',
+            display_name: '⚙️ 支撑类流程',
+            data_type: 'markdown'
           }
-        ]
+        ],
+        rows: supportRows
+      },
+      {
+        tag: 'table',
+        page_size: 10,
+        header_style: {
+          text_align: 'left',
+          background_style: 'grey'
+        },
+        columns: [
+          {
+            name: 'flow_name',
+            display_name: '🚀 使能类流程',
+            data_type: 'markdown'
+          }
+        ],
+        rows: enableRows
+      },
+      {
+        tag: 'table',
+        page_size: 10,
+        header_style: {
+          text_align: 'left',
+          background_style: 'grey'
+        },
+        columns: [
+          {
+            name: 'flow_name',
+            display_name: '📊 运营类流程',
+            data_type: 'markdown'
+          }
+        ],
+        rows: operationRows
       },
       { tag: 'hr' },
       {
