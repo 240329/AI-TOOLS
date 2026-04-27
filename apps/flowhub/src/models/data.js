@@ -75,16 +75,16 @@ async function saveFlowsToDB(flowhub_flows) {
   try {
     for (let i = 0; i < flowhub_flows.length; i += chunkSize) {
       const chunk = flowhub_flows.slice(i, i + chunkSize);
-      const placeholders = chunk.map(() => '(?, ?, ?, ?)').join(', ');
+      const placeholders = chunk.map(() => '(?, ?, ?, ?, ?)').join(', ');
       const values = chunk.flatMap(flow => [
-        flow.id, flow.name, flow.positions || '', flow.url
+        flow.id, flow.name, flow.positions || '', flow.url, flow.category || ''
       ]);
 
       await query(
-        `INSERT INTO flowhub_flows (id, name, positions, url) 
+        `INSERT INTO flowhub_flows (id, name, positions, url, category) 
          VALUES ${placeholders} 
          ON DUPLICATE KEY UPDATE 
-         name=VALUES(name), positions=VALUES(positions), url=VALUES(url)`,
+         name=VALUES(name), positions=VALUES(positions), url=VALUES(url), category=VALUES(category)`,
         values
       );
     }

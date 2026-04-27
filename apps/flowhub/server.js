@@ -295,6 +295,7 @@ app.post('/api/flowhub/flowhub_flows/upload', upload.single('file'), async (req,
       const name = String(row[0] || '').trim();
       const positions = String(row[1] || '').trim();
       const url = String(row[2] || '').trim();
+      const category = String(row[3] || '').trim();
 
       if (name) {
         const validation = validateFlowData({ name, url });
@@ -310,7 +311,8 @@ app.post('/api/flowhub/flowhub_flows/upload', upload.single('file'), async (req,
           id: flowId,
           name: name.trim(),
           positions: positions.trim(),
-          url: url.trim()
+          url: url.trim(),
+          category: category.trim()
         });
       }
     }

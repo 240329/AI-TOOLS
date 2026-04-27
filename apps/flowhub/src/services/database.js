@@ -67,6 +67,12 @@ async function initDatabase(config) {
     await pool.query('ALTER TABLE flowhub_flows ADD COLUMN positions VARCHAR(200) DEFAULT ""');
   }
 
+  try {
+    await pool.query('SELECT category FROM flowhub_flows LIMIT 1');
+  } catch (err) {
+    await pool.query('ALTER TABLE flowhub_flows ADD COLUMN category VARCHAR(100) DEFAULT ""');
+  }
+
   console.log('✓ MySQL 数据库连接池已创建');
   return pool;
 }

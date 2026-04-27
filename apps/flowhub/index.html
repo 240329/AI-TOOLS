@@ -566,12 +566,12 @@
             <section id="knowledge" class="view-section">
                 <div class="glass-card">
                     <h3>导入流程清单</h3>
-                    <p style="color: var(--text-muted); margin: 10px 0 20px;">支持导入 Excel / CSV 格式的流程标准文件。格式：名称 | 适配岗位(可填"所有"匹配全员) | 链接</p>
+                    <p style="color: var(--text-muted); margin: 10px 0 20px;">支持导入 Excel / CSV 格式的流程标准文件。格式：名称 | 适配岗位(可填"所有"匹配全员) | 链接 | 类别</p>
                     <div class="upload-area" id="drop-zone-flow">
                         <input type="file" id="file-input-flow" accept=".xlsx,.xls,.csv" style="display: none;">
                         <i class="fa-solid fa-cloud-arrow-up"></i>
                         <h3 id="upload-title-flow">点击或将文件拖拽到此处</h3>
-                        <p id="upload-subtitle-flow">列顺序：名称 → 适配岗位(逗号分隔，可填"所有"匹配全员) → 云文档链接</p>
+                        <p id="upload-subtitle-flow">列顺序：名称 → 适配岗位(逗号分隔，可填"所有"匹配全员) → 云文档链接 → 类别</p>
                         <p id="file-name-flow" style="display: none; color: var(--primary-color); margin-top: 10px;"></p>
                         <button class="btn" id="select-btn-flow"><i class="fa-solid fa-folder-open"></i> 选择文件</button>
                     </div>
@@ -581,7 +581,7 @@
                     <div class="card-header-flex">
                         <h3>系统流程清单</h3>
                         <div class="search-box">
-                            <input type="text" id="search-flow-input" placeholder="搜索流程名称或适配岗位...">
+                            <input type="text" id="search-flow-input" placeholder="搜索流程名称、适配岗位或类别...">
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </div>
                     </div>
@@ -1024,7 +1024,7 @@
                 <div class="list-item" style="display: flex; align-items: center; flex-wrap: wrap;">
                     <div class="item-info" style="flex: 1; min-width: 200px;">
                         <h4>${flow.id}: ${flow.name}</h4>
-                        <p>适配岗位：${flow.positions || '未设置'}</p>
+                        <p>适配岗位：${flow.positions || '未设置'} ${flow.category ? ' | 类别：' + flow.category : ''}</p>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <button class="btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteFlow('${flow.id}', this)">
@@ -1043,7 +1043,8 @@
             }
             const filtered = allFlows.filter(flow => 
                 (flow.name && flow.name.toLowerCase().includes(keyword)) ||
-                (flow.positions && flow.positions.toLowerCase().includes(keyword))
+                (flow.positions && flow.positions.toLowerCase().includes(keyword)) ||
+                (flow.category && flow.category.toLowerCase().includes(keyword))
             );
             renderFlowList(filtered);
         }, 300));
