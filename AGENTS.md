@@ -21,8 +21,16 @@ npm run start:all # Run all apps
   - V-GEN: `apps/vgen/server.js` (port 3002)
   - Resume AI: `apps/resume-ai/server.js` (port 3003)
   - Visionary: `apps/visionary/server.js` (port 3004)
-- **Config**: `shared/config.js` -> app-specific `config.js` in each app
-- **Database**: MySQL database `flowhub` must exist (one DB, separate tables per app)
+- **Config**: `shared/config.js` (reads `.env`, no hardcoded secrets) -> app-specific `config.js` in each app (contains secrets)
+- **Database**: MySQL database `flowhub` must exist; all tables use `flowhub_` prefix per app (e.g. `flowhub_employees`, `flowhub_scheduled_tasks`), auto-created on boot
+- **FlowHub is the only layered app**: `server.js` (routes) + `src/models/data.js|task.js` (data + business) + `src/services/database.js|feishu.js` (external I/O) + `src/utils/validators.js`. Other apps are monolithic `server.js`
+
+## Known Pitfalls
+- `apps/flowhub/src/utils/logger.js` (winston) is **unused dead code** - do not depend on it
+- `apps/flowhub/src/models/task.js` lines ~206-239 contain leftover `[DEBUG]` logs (employee deletion debugging) - can be removed
+- FlowHub binds `0.0.0.0` with **no authentication** - LAN users can delete data and trigger Feishu pushes; do not expose to untrusted networks without auth
+- Feishu cards send via employee `email` as receive_id; wiki URLs are hardcoded in `feishu.js` (near lines 185/193)
+- Once-type tasks delete successfully-pushed employees from the roster automatically
 
 ## Important Notes
 - **DO NOT commit**: `config.js` (contains appId/appSecret/DB passwords), `.env` (secrets)
