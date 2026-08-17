@@ -203,14 +203,40 @@ async function executePushTask(taskId) {
         .filter(r => r.success && r.employeeId)
         .map(r => r.employeeId);
 
+      console.log(`[DEBUG] ========== 删除调试开始 ==========`);
+      console.log(`[DEBUG] 推送成功员工数: ${successEmployeeIds.length}`);
+      console.log(`[DEBUG] 成功员工ID列表: ${JSON.stringify(successEmployeeIds)}`);
+
       if (successEmployeeIds.length > 0) {
         try {
-          await query('DELETE FROM flowhub_employees WHERE id IN (?)', [...new Set(successEmployeeIds)]);
+          const [beforeCount] = await query('SELECT COUNT(*) as cnt FROM flowhub_employees');
+          console.log(`[DEBUG] 删除前员工总数: ${beforeCount[0].cnt}`);
+
+          const uniqueIds = [...new Set(successEmployeeIds)];
+          console.log(`[DEBUG] 去重后ID数量: ${uniqueIds.length}`);
+          console.log(`[DEBUG] IN子句参数预览: ${uniqueIds.slice(0, 5).join(', ')}...`);
+
+          const placeholders = uniqueIds.map(() => '?').join(', ');
+          const deleteSql = `DELETE FROM flowhub_employees WHERE id IN (${placeholders})`;
+          console.log(`[DEBUG] 执行SQL: DELETE FROM flowhub_employees WHERE id IN (${uniqueIds.length}个参数)`);
+          await query(deleteSql, uniqueIds);
+
+          const [afterCount] = await query('SELECT COUNT(*) as cnt FROM flowhub_employees');
+          console.log(`[DEBUG] 删除后员工总数: ${afterCount[0].cnt}`);
+          console.log(`[DEBUG] 预期删除数: ${beforeCount[0].cnt - afterCount[0].cnt}`);
           console.log(`单次任务：已批量删除 ${successEmployeeIds.length} 位已推送员工`);
         } catch (err) {
+          console.error(`[DEBUG] ========== 删除失败 ==========`);
+          console.error(`[DEBUG] 错误信息: ${err.message}`);
+          console.error(`[DEBUG] 错误码: ${err.code}`);
+          console.error(`[DEBUG] SQL状态: ${err.sqlState}`);
+          console.error(`[DEBUG] 错误对象: ${JSON.stringify(err)}`);
           console.error('批量删除推送成功的员工失败:', err);
         }
+      } else {
+        console.log(`[DEBUG] 没有成功推送的员工，无需删除`);
       }
+      console.log(`[DEBUG] ========== 删除调试结束 ==========`);
       tasks.delete(taskId);
     }
 
