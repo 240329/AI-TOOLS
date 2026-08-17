@@ -1,16 +1,16 @@
 # MI HUB - AI Tools 多应用管理平台
 
-追觅科技个护 BG 内部 AI 工具平台，统一入口管理多个独立子应用。
+ AI 工具平台，统一入口管理多个独立子应用。
 
 ## 应用一览
 
-| 应用 | 端口 | 说明 |
-|------|------|------|
-| MI HUB 主入口 | 3000 | 导航中枢（`server-main.js`），卡片式跳转子应用 |
-| FlowHub | 3001 | 个护 BG 流程小助手：HR 入职流程管理 + 飞书定时推送 |
-| V-GEN Studio | 3002 | AI 视频/图片生成（对接 PAI 平台 API，含图像编辑） |
-| Resume AI | 3003 | 简历管理：上传解析、候选人分析、分类 |
-| Visionary | 3004 | 创意视觉：文案/海报生成、项目与素材管理 |
+| 应用 | 说明 |
+|------|------|
+| MI HUB 主入口 | 导航中枢，卡片式跳转子应用 |
+| FlowHub | 流程小助手：HR 入职流程管理 + 飞书定时推送 |
+| V-GEN Studio | AI 视频/图片生成（对接 PAI 平台 API，含图像编辑） |
+| Resume AI | 简历管理：上传解析、候选人分析、分类 |
+| Visionary |创意视觉：文案/海报生成、项目与素材管理 |
 
 ## 技术栈
 
@@ -22,11 +22,11 @@ express-rate-limit（限流）、winston（日志，FlowHub 用）
 
 ```bash
 npm install        # 安装依赖
-npm start          # 主入口 :3000
-npm run flowhub    # FlowHub :3001
-npm run vgen       # V-GEN :3002
-npm run resume     # Resume AI :3003
-npm run visionary  # Visionary :3004
+npm start          # 主入口
+npm run flowhub    # FlowHub
+npm run vgen       # V-GEN
+npm run resume     # Resume AI
+npm run visionary  # Visionary
 npm run start:all  # 同时启动全部 5 个服务
 ```
 
@@ -37,13 +37,6 @@ npm run start:all  # 同时启动全部 5 个服务
 3. 根目录 `.env` 可按需存放环境变量（各应用不强制依赖）
 
 ## 局域网访问
-
-所有服务已监听 `0.0.0.0`，同局域网同事直接访问：
-
-```
-http://<你的局域网IP>:3001   # FlowHub
-http://<你的局域网IP>:3000   # 主入口导航
-```
 
 - 启动日志会打印本机局域网 IP
 - 需确保 Windows 防火墙放行 Node.js 入站（或对应端口）
